@@ -1,0 +1,28 @@
+[params]
+
+NE               : 21
+dE               : 1e-4
+PrecLambda       : 1e-6
+PrecSigmaT       : 1e-3
+PrecN            : 1e-4
+alpha            : 1.0
+
+;GFtype           : semi
+GFtype           : lor
+;GFtype           : gauss
+;GFtype           : sc
+;GFtype           : sq
+
+GFmethod         : H
+calcSusc         : 0
+
+[IO]
+
+WriteOutput      : 1
+WriteFileGreenF  : 1
+WriteFileVertex  : 1
+WriteDataFile    : 0
+
+WriteMax         : 30
+WriteStep        : 3
+
