@@ -14,7 +14,7 @@ The DMFT loop is implemented only for the Bethe lattice with semi-elliptic DoS.
 This code is still subject to heavy development and 
 big changes. It requires deep knowledge of the method to obtain reasonable results. 
 Codes also contain internal switches that allow e.g. to change the level of self-consistency contitions. 
-Use only as an example how to implement SPE.  
+Use only as an example how to implement SPE. Code *siam_dynamic.py* is in very early stage of development.  
 
 Code is tested on python 3.5 and 3.6 with SciPy 0.18. Compatibility with older SciPy versions
 is not guaranteed. Some parts of code use [mpmath](mpmath.org) library to calculate special functions 
@@ -64,7 +64,7 @@ of the Schwinger-Dyson equation. File *siam.npz* contains raw data for further p
 
 *siam_dynamic.py* generates equivalent files named *gfdyn_xxxx.dat* containing the thermodynamic self-energy, 
 thermodynamic Green function, spectral self-energy and spectral Green function, and *vertexdyn_xxxx.dat*
-containing Lambda vertex, K vertex and the kernel of the Schwinger-Dyson equation. Data file is called *data_xxx.dat*
+containing Lambda vertex, K vertex and the kernel of the Schwinger-Dyson equation. Data file is called *data_xxx.npz*
 and can be used as an initial condition for a different calculation.
 
 *dmft_parquet.py* generates output file *gf_iterxxxx.dat* with Greens function and self-energy for every 
