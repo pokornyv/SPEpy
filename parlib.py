@@ -27,18 +27,22 @@ FermiDiracDeriv = lambda E,T: -(1.0/T)*sp.exp((E+offE)/T)/(sp.exp((E+offE)/T)+1.
 def FillFD(En_A,T):
 	""" fill an array with Fermi-Dirac distribution """
 	N = int((len(En_A)-1)/2)
+	sp.seterr(over='ignore') ## ignore overflow in exp, not important in this calculation
 	if T == 0.0: FD_A = 1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
 	else:        FD_A = FermiDirac(En_A,T)
+	sp.seterr(over='warn')
 	return FD_A
 
 
 def FillBE(En_A,T):
 	""" fill an array with Bose-Einstein distribution """
 	N = int((len(En_A)-1)/2)
+	sp.seterr(over='ignore') ## ignore overflow in exp, not important in this calculation
 	if T == 0.0: BE_A = -1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
 	else:        
 		BE_A = BoseEinstein(En_A,T)
 		BE_A[N] = -0.5
+	sp.seterr(over='warn')
 	return BE_A
 
 
@@ -63,19 +67,23 @@ def Filling(GF_A,En_A,T):
 	""" calculates filling, the integral over (-inf,inf) of f(w)G(w) """
 	FD_A = FillFD(En_A,T)
 	DOS_A = -FD_A*sp.imag(GF_A)/sp.pi
-	#fitmax = int(N/8)
-	#tailf = lambda x,a,b,c: 1.0*a/x**2+1.0*b/x**4+1.0*c/x**6
-	#cf = curve_fit(tailf, En_F[:int(N/8)],sp.imag(GF_F[:int(N/8)]))[0]
-	#print(cf[0],cf[1],cf[2])
-	#Tail = (cf[0]/En_F[fitmax]+cf[1]/(3.0*En_F[fitmax]**3)+cf[2]/(5.0*En_F[fitmax]**5))/sp.pi
-	TailL = -DOS_A[0] *En_A[0]	# left tail
-	TailR =  DOS_A[-1]*En_A[-1]	# right tail
-	## new tail: a/x**2+b/x**4
-	#a = (f1*x1**4-f2*x2**4)/(x1**2-x2**2)
-	#b = 0.5*(f1*x1**4+f2*x2**4-a*(x1**2+x2**2))
-	#Tail = a/x2**2+b/(3.0*x2**3)
-#	print('# - Filling(): tails: L {0: .8f},  R {1: .8f}'.format(TailL,TailR))
-	return simps(DOS_A,En_A) + TailL + TailR
+	## old tail: fit by a/x**2
+	TailL1 = -DOS_A[0] *En_A[0]	# left tail
+	TailR1 =  DOS_A[-1]*En_A[-1]	# right tail
+	## new tail: fit by a/x**2+b/x**4
+	## this fit depends on the length of the fitting interval
+	#K = int(len(En_A)/100) 	## length of the fitting interval
+	#a = lambda x1,x2,f1,f2:        (f1*x1**4-f2*x2**4)/(x1**2-x2**2)
+	#b = lambda x1,x2,f1,f2,ab: 0.5*(f1*x1**4+f2*x2**4-ab*(x1**2+x2**2))
+	#aL = a(En_A[ 0],En_A[ K],DOS_A[ 0],DOS_A[ K])
+	#bL = b(En_A[ 0],En_A[ K],DOS_A[ 0],DOS_A[ K],aL)
+	#aR = a(En_A[-K],En_A[-1],DOS_A[-K],DOS_A[-1])
+	#bR = b(En_A[-K],En_A[-1],DOS_A[-K],DOS_A[-1],aR)
+	#TailL2 = -aL/En_A[ 0]-bL/(3.0*En_A[ 0]**3)
+	#TailR2 = -aR/En_A[-1]-bL/(3.0*En_A[-1]**3)
+	#print('# - Filling(): tails: L1 {0: .8f},  R1 {1: .8f}'.format(TailL,TailR))
+	#print('#                     L2 {0: .8f},  R2 {1: .8f}'.format(TailL2,TailR2))
+	return simps(DOS_A,En_A) + TailL1 + TailR1
 
 ## functions to calculate spectral density ################
 
@@ -87,7 +95,7 @@ def GreensFunctionSemi(E,W):
 
 
 def DensitySemi(x,W):
-	""" particle denisty (integral of DoS until x) of non-interacting semi-elliptic band for T=0 """
+	""" particle denisty of a semi-elliptic band for T=0 """
 	return sp.real(0.5 - x*sp.sqrt(W**2-x**2)/(sp.pi*W**2) - sp.arcsin(x/W)/sp.pi)
 
 
@@ -97,7 +105,7 @@ def GreensFunctionLorenz(E,Delta):
 
 
 def DensityLorentz(x,Delta):
-	""" particle denisty (integral of DoS until x) of non-interacting Lorentzian band  for T=0 """
+	""" particle denisty of a Lorentzian band  for T=0 """
 	return 0.5 - sp.arctan(x/Delta)/sp.pi
 
 
@@ -107,7 +115,7 @@ def GreensFunctionGauss(E,Gamma):
 
 
 def DensityGauss(x,Gamma):
-	""" particle denisty (integral of DoS until x) of non-interacting Gaussian band  for T=0 """
+	""" particle denisty of a Gaussian band  for T=0 """
 	return (1.0+erf(x/sp.sqrt(2.0*Gamma**2)))/2.0
 
 
@@ -155,10 +163,10 @@ def CalculateHWHM(GF_F,En_F):
 	IntMin = int((N+1)/2-int(0.5/dE))
 	IntMax = int((N+1)/2+int(0.5/dE))
 	DOSmaxPos = sp.argmax(-sp.imag(GF_F[IntMin:IntMax])/sp.pi)
-	DOSmax    = -sp.imag(GF_F[IntMin+DOSmaxPos])/sp.pi 		# maximum of DoS
-	wmax      = En_F[IntMin+DOSmaxPos]                    		# position of the maximum at energy axis
+	DOSmax    = -sp.imag(GF_F[IntMin+DOSmaxPos])/sp.pi # maximum of DoS
+	wmax      = En_F[IntMin+DOSmaxPos]                 # position of the maximum at energy axis
 	DOS = InterpolatedUnivariateSpline(En_F-1e-12,-sp.imag(GF_F)/sp.pi-DOSmax/2.0) 
-	## 1e-12 breaks symmetry for half-filling, otherway DOS.roots() loses one solution. BUG???
+	## 1e-12 breaks symmetry for half-filling, otherway DOS.roots() loses one solution.
 	DOSroots_F = sp.sort(sp.fabs(DOS.roots()))
 	try:
 		HWHM = (DOSroots_F[0] + DOSroots_F[1])/2.0
@@ -183,7 +191,7 @@ def QuasiPWeight(En_F,ReSE_F):
 def KVertex(Lambda,Bubble_F):
 	""" dynamical part of the two-particle vertex """
 	## offE helps to prevent the 'RuntimeWarning: invalid value encountered in true_divide'
-	## that causes problems in non-symmetric cases while calculating SigmaT
+	## that causes problems in non-symmetric cases while calculating SigmaT in siam_static.py
 	return -Lambda**2*Bubble_F/(1.0+Lambda*Bubble_F+offE)
 
 

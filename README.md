@@ -40,12 +40,12 @@ not necessary but they occasionaly speed up the calculation.
 #### TODO list:
 - [x] The quasiparticle residue *Z* is not calculated correctly due to an instability in the 
 numerical differentiation procedure (needs testing).
+- [x] Fix *RuntimeWarning: overflow encountered in exp* in `FermiDirac` and `BoseEinstein`.
 - [ ] Fix signed int overflow in `KramersKronigFFT`.
-- [ ] Fix *RuntimeWarning: overflow encountered in exp* in `FermiDirac` and `BoseEinstein`.
 - [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
-- [ ] Implement square lattice DoS for d-wave ordering study in the Hubbard model to *siam_parquet.py*.
-- [ ] Temperature dependence works only to small temperatures.
-- [ ] Update the dmft code for the new concept (needs testing, implemented only for half-filling).
+- [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.
+- [ ] Temperature dependence in *siam_parquet.py* works only to small temperatures.
+- [ ] Update the dmft code for the new concept (needs testing, works only at half-filling).
 - [ ] Speed-up the simple-cubic/square lattice calculation by using the Hilbert transform (maybe not possible).
 
 #### List of files:

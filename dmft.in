@@ -10,10 +10,10 @@ dE           : 1e-4
 PrecLambda   : 1e-6
 PrecSigmaT   : 1e-4
 
-NStart       : 1
-NIter        : 20
+NStart        : 1
+NIter         : 20
 
-alpha        : 1.0
+alpha         : 1.0
 
 [IO]
 
