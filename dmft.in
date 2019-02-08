@@ -1,0 +1,24 @@
+[params]
+
+U            : 1.0
+Delta        : 1.0
+ef           : 0.0
+Temp         : 0.0
+
+NE           : 21
+dE           : 1e-4
+PrecLambda   : 1e-6
+PrecSigmaT   : 1e-4
+
+NStart       : 1
+NIter        : 20
+
+alpha        : 1.0
+
+[IO]
+
+WriteFiles   : 1
+WriteOutput  : 1
+WriteMax     : 10.0
+WriteStep    : 3
+

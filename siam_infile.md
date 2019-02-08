@@ -18,8 +18,8 @@ alpha        : 0.5
 ;GFtype       : gauss
 GFtype        : lor
 ;GFtype       : sc
+;GFtype       : sq
 
-GFmethod         : H
 calcSusc         : 0
 
 [IO]
@@ -39,12 +39,13 @@ WriteStep        : 3
 
 - *NE* - the energy axis contains 2^NE+1 points (caution, NE>21 can cause trouble with signed int overflow)  
 - *dE* - discretization of the energy axis  
-- *PrecLambda* - convergence criterium used in calculation of the static vertex Lambda  
+- *PrecLambda* - convergence criterium used in calculation of the vertex Lambda  
 - *PrecSigmaT* - convergence criterium used in calculation of the thermodynamic self-energy  
-- *PrecN* - convergence criterium used in calculation of the final electron density  
-- *alpha* - mixing parameter used in calculation of the thermodynamic self-energy, alpha=1 means no mixing  
-- *GFtype* - input Green function, lor - Loretzian, semi - semielliptic, sc - simple-cubic lattice  
-- *GFmethod* - method to calculate the interacting Green function, S - local GF, H - lattice GF  
+- *PrecN* - convergence criterium used in calculation of the electron density  
+- *alpha* - mixing parameter used in calculation of the thermodynamic self-energy or 
+the Lambda vertex, alpha=1 means no mixing  
+- *GFtype* - input Green function, lor - Loretzian, semi - semielliptic, 
+sc - simple-cubic lattice, sq - square lattice  
 - *calcSusc* - 0/1 switch whether calculate susceptibilities (it takes a lot of time)  
 
 ###[IO] section

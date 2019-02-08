@@ -1,41 +1,45 @@
-# simplified parquet equation solver for SIAM
-# library of functions
-# uses scipy, optimized on python 3.3.2
-# Vladislav Pokorny; 2015-2017; pokornyv@fzu.cz
+###########################################################
+# SPEpy - simplified parquet equation solver for SIAM     #
+# Vladislav Pokorny; 2015-2019; pokornyv@fzu.cz           #
+# homepage: github.com/pokornyv/SPEpy                     #
+# developed and optimized using python 3.7.2              #
+# parlib.py - library of functions                        #
+###########################################################
 
 import scipy as sp
+import warnings
 from sys import exit
 from scipy.integrate import simps
 from scipy.fftpack import fft,ifft
 from scipy.interpolate import InterpolatedUnivariateSpline,UnivariateSpline
 from scipy.optimize import brentq,fixed_point
 from scipy.special import erf,wofz
-from scipy.optimize import curve_fit
+#from scipy.optimize import curve_fit
 
 ## particle distributions #################################
 
-FermiDirac      = lambda E,T: 1.0/(sp.exp((E+1e-12)/T)+1.0)
-BoseEinstein    = lambda E,T: 1.0/(sp.exp((E+1e-12)/T)-1.0)
-FermiDiracDeriv = lambda E,T: -(1.0/T)*sp.exp((E+1e-12)/T)/(sp.exp((E+1e-12)/T)+1.0)**2
+offE = 1e-12
 
-def FillFD(En_F,T):
+FermiDirac      = lambda E,T: 1.0/(sp.exp((E+offE)/T)+1.0)
+BoseEinstein    = lambda E,T: 1.0/(sp.exp((E+offE)/T)-1.0)
+FermiDiracDeriv = lambda E,T: -(1.0/T)*sp.exp((E+offE)/T)/(sp.exp((E+offE)/T)+1.0)**2
+
+def FillFD(En_A,T):
 	""" fill an array with Fermi-Dirac distribution """
-	N = int((len(En_F)-1)/2)
-	if T == 0.0:
-		FD_F = 1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
-	else:
-		FD_F = FermiDirac(En_F,T)
-	return FD_F
+	N = int((len(En_A)-1)/2)
+	if T == 0.0: FD_A = 1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
+	else:        FD_A = FermiDirac(En_A,T)
+	return FD_A
 
 
-def FillBE(En_F,T):
+def FillBE(En_A,T):
 	""" fill an array with Bose-Einstein distribution """
-	N = int((len(En_F)-1)/2)
-	if T == 0.0:
-		BE_F = -1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
-	else:
-		BE_F = BoseEinstein(En_F,T)
-	return BE_F
+	N = int((len(En_A)-1)/2)
+	if T == 0.0: BE_A = -1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
+	else:        
+		BE_A = BoseEinstein(En_A,T)
+		BE_A[N] = -0.5
+	return BE_A
 
 
 ## auxiliary functions ####################################
@@ -48,33 +52,30 @@ def KondoTemperature(U,Gamma,en):
 		return 0.0
 
 
-def FillEnergies(dE,N):
-	"""	returns the symmetric array of energies 
-	[Emin,Emin+dE,...,0,...,-Emin-dE,-Emin] of length N """
-	dE_dec = int(-sp.log10(dE))
-	En_F = sp.linspace(-(N-1)/2*dE,(N-1)/2*dE,N)
-	return sp.around(En_F,dE_dec+2)
-
-
-def IntDOS(GF_F,En_F):
+def IntDOS(GF_A,En_A):
 	""" the integral over the DOS, should be 1.0 """
-	TailL =  sp.imag(GF_F)[ 0]*En_F[ 0]/sp.pi	# left tail
-	TailR = -sp.imag(GF_F)[-1]*En_F[-1]/sp.pi	# right tail
-	return -simps(sp.imag(GF_F),En_F)/sp.pi+TailL+TailR
+	TailL =  sp.imag(GF_A)[ 0]*En_A[ 0]/sp.pi	# left tail
+	TailR = -sp.imag(GF_A)[-1]*En_A[-1]/sp.pi	# right tail
+	return -simps(sp.imag(GF_A),En_A)/sp.pi+TailL+TailR
 
 
-def Filling(GF_F,En_F,T):
-	""" calculates the integral over (-inf,0] of G(w)**n """
-	FD_F = FillFD(En_F,T)
-	DOS_F = -FD_F*sp.imag(GF_F)/sp.pi
+def Filling(GF_A,En_A,T):
+	""" calculates filling, the integral over (-inf,inf) of f(w)G(w) """
+	FD_A = FillFD(En_A,T)
+	DOS_A = -FD_A*sp.imag(GF_A)/sp.pi
 	#fitmax = int(N/8)
 	#tailf = lambda x,a,b,c: 1.0*a/x**2+1.0*b/x**4+1.0*c/x**6
 	#cf = curve_fit(tailf, En_F[:int(N/8)],sp.imag(GF_F[:int(N/8)]))[0]
 	#print(cf[0],cf[1],cf[2])
 	#Tail = (cf[0]/En_F[fitmax]+cf[1]/(3.0*En_F[fitmax]**3)+cf[2]/(5.0*En_F[fitmax]**5))/sp.pi
-	TailL = -DOS_F[0]*En_F[0]	# left tail
-	TailR = DOS_F[-1]*En_F[-1]	# right tail
-	return simps(DOS_F,En_F) + TailL + TailR
+	TailL = -DOS_A[0] *En_A[0]	# left tail
+	TailR =  DOS_A[-1]*En_A[-1]	# right tail
+	## new tail: a/x**2+b/x**4
+	#a = (f1*x1**4-f2*x2**4)/(x1**2-x2**2)
+	#b = 0.5*(f1*x1**4+f2*x2**4-a*(x1**2+x2**2))
+	#Tail = a/x2**2+b/(3.0*x2**3)
+#	print('# - Filling(): tails: L {0: .8f},  R {1: .8f}'.format(TailL,TailR))
+	return simps(DOS_A,En_A) + TailL + TailR
 
 ## functions to calculate spectral density ################
 
@@ -140,7 +141,6 @@ def GreensFunctionSC(x,W):
 
 def ShiftGreensFunction(GF_F,En_F,shift):
 	""" fill the GF array with GF shifted by real, static self-energy """
-	#GF_F = sp.zeros(len(En_F),dtype=complex)
 	ReGF = InterpolatedUnivariateSpline(En_F,sp.real(GF_F))
 	ImGF = InterpolatedUnivariateSpline(En_F,sp.imag(GF_F))
 	GF_F = ReGF(En_F+shift)+1.0j*ImGF(En_F+shift)
@@ -158,7 +158,7 @@ def CalculateHWHM(GF_F,En_F):
 	DOSmax    = -sp.imag(GF_F[IntMin+DOSmaxPos])/sp.pi 		# maximum of DoS
 	wmax      = En_F[IntMin+DOSmaxPos]                    		# position of the maximum at energy axis
 	DOS = InterpolatedUnivariateSpline(En_F-1e-12,-sp.imag(GF_F)/sp.pi-DOSmax/2.0) 
-	# 1e-12 breaks symmetry for half-filling, otherway DOS.roots() loses one solution. BUG???
+	## 1e-12 breaks symmetry for half-filling, otherway DOS.roots() loses one solution. BUG???
 	DOSroots_F = sp.sort(sp.fabs(DOS.roots()))
 	try:
 		HWHM = (DOSroots_F[0] + DOSroots_F[1])/2.0
@@ -182,9 +182,9 @@ def QuasiPWeight(En_F,ReSE_F):
 
 def KVertex(Lambda,Bubble_F):
 	""" dynamical part of the two-particle vertex """
-	## 1e-12 part helps to prevent the 'RuntimeWarning: invalid value encountered in true_divide'
+	## offE helps to prevent the 'RuntimeWarning: invalid value encountered in true_divide'
 	## that causes problems in non-symmetric cases while calculating SigmaT
-	return -Lambda**2*Bubble_F/(1.0+Lambda*Bubble_F+1e-12)
+	return -Lambda**2*Bubble_F/(1.0+Lambda*Bubble_F+offE)
 
 
 def PsiInt(K_F,GFup_F,GFdn_F,En_F,T):
@@ -207,6 +207,8 @@ def LambdaFunction(U,Lambda,Bubble_F,GFup_F,GFdn_F,En_F,T,chat):
 def CalculateLambda(U,Bubble_F,GFup_F,GFdn_F,En_F,T,chat,epsl):
 	""" function to calculate new Lambda from previous iteration """
 	Uc = -1.0/sp.real(Bubble_F[int(len(En_F)/2)])
+	if Uc < 1e-6:
+		print('# Warning: CalculateLambda: critical U is very small, please check the bubble.')	
 	LMin = 0.0
 	LMax = Uc-1e-10
 	try:
@@ -214,59 +216,30 @@ def CalculateLambda(U,Bubble_F,GFup_F,GFdn_F,En_F,T,chat,epsl):
 		w = 0.0
 		Lambda = brentq(eqn,LMin,LMax,xtol=epsl)
 	except ValueError:
-		print('# Error: brentq failed to calculate Lambda, probably too close to critical U.')
+		print('# Error: CalculateLambda: brentq failed to calculate Lambda, probably too close to critical U.')
 		exit()
-		#Lambda = Uc
 	return Lambda
-
-## dynamic vertices #######################################
-
-def KVertexDynamic3(Lambda_F,GF1_F,GF2_F,En_F,T):
-	""" dynamic K vertex consistent with dynamic Lambda 
-	older definition""" 
-	Nom =     - TwoParticleBubble(Lambda_F**2*GF1_F,GF2_F,En_F,T,'eh')
-	Den = 1.0 + TwoParticleBubble(Lambda_F*GF1_F,GF2_F,En_F,T,'eh')
-	return Nom/Den
-
-
-def KVertexDynamic2(Lambda_F,GF1_F,GF2_F,En_F,T):
-	""" dynamic K vertex consistent with dynamic Lambda """
-	N = len(Lambda_F)
-	LGG_F = TwoParticleBubble(Lambda_F*GF1_F,GF2_F,En_F,T,'eh')
-	return - Lambda_F[int(N/2)]*LGG_F/(1.0+LGG_F)
-
-
-def KVertexDynamic(Lambda_F,GF1_F,GF2_F,En_F,T):
-	""" dynamic K vertex consistent with dynamic Lambda """
-	N = len(Lambda_F)
-	LGG_F = TwoParticleBubble(Lambda_F*GF1_F,GF2_F,En_F,T,'eh')
-	return - Lambda_F*(1.0-1.0/(1.0+LGG_F))
-
-
-def LVertexDynamic(K_F,GF1_F,GF2_F,En_F,U,T):
-	""" dynamic Lambda vertex with one bosonic frequency """
-	return U/(1.0+TwoParticleBubble(sp.conj(K_F)*GF1_F,GF2_F,En_F,T,'ee'))
 
 ## susceptibilities #######################################
 
 def SusceptibilityTherm(a,GF_F,En_F,T):
-	""" susceptibility calculated from thermal self-energy derivative """
+	""" susceptibility calculated from the thermal self-energy derivative """
 	FD_F = FillFD(En_F,T)
 	Int_F = FD_F*sp.imag(GF_F**2)
-	# what about tail???
+	## what about tail???
 	return 2.0*simps(Int_F,En_F)/(a*sp.pi)
 
 
 def SusceptibilitySpec(U,Lambda,X_F,GF_F,BubZero,En_F,T):
-	""" susceptibility calculated from spectral self-energy derivative """
+	""" susceptibility calculated from the spectral self-energy derivative """
 	FD_F = FillFD(En_F,T)
 	Int_F = FD_F*sp.imag(GF_F**2*(1.0-U*X_F/(1.0+Lambda*BubZero)))
-	# what about tail???
+	## what about tail???
 	return 2.0*simps(Int_F,En_F)/sp.pi
 
 
 def SusceptibilityHF(U,GF_F,X_F,En_F,T):
-	""" susceptibility calculated from full spectral self-energy derivative """
+	""" susceptibility calculated from the full spectral self-energy derivative """
 	FD_F = FillFD(En_F,T)
 	Int1_F = FD_F*sp.imag(GF_F**2*(1.0-U*X_F))
 	Int2_F = FD_F*sp.imag(GF_F**2*X_F)
@@ -274,8 +247,9 @@ def SusceptibilityHF(U,GF_F,X_F,En_F,T):
 	I2 = simps(Int2_F,En_F)/sp.pi
 	return 2.0*I1/(1.0+U**2*I2)
 
+
 def AFbubble(En_F,GFzero_F,MuBar,T):
-	""" non-local bubble for k=(pi,pi,pi) (antiferromagnetic case for sc lattice) """
+	""" non-local bubble for k=(pi,pi,pi) - antiferromagnetic case for sc lattice """
 	FD_F = FillFD(En_F-MuBar,T)
 	F_F = -sp.imag(GFzero_F)*FD_F/(sp.pi*En_F)
 	F_F[int(len(En_F)/2)] = 0.0 # we are taking the principal value
@@ -289,27 +263,25 @@ def SpecHWHM(GFint_F,En_F):
 	DOS = InterpolatedUnivariateSpline(En_F,-sp.imag(GFint_F)/sp.pi-DOSF/2.0)
 	return sp.amin(sp.fabs(DOS.roots()))
 
+
 ## convolutions in Matsubara frequencies ##################
 
-def TwoParticleBubble(GF1_F,GF2_F,En_F,T,channel):
-	""" calculates the two-particle bubble, uses fft from scipy.fftpack
-	channel = eh or ee """
+def TwoParticleBubble(F1_F,F2_F,En_F,T,channel):
+	""" calculates the two-particle bubble, channel = 'eh', 'ee' """
 	N = int((len(En_F)-1)/2)
 	dE = sp.around(En_F[1]-En_F[0],8)
 	FD_F = FillFD(En_F,T)
-	FD_F = sp.concatenate([FD_F[N:],sp.zeros(2*N+3),FD_F[:N]])
-	ImGF1_F = sp.concatenate([sp.imag(GF1_F[N:])\
-	,sp.zeros(2*N+3),sp.imag(GF1_F[:N])])
-	ImGF2_F = sp.concatenate([sp.imag(GF2_F[N:])\
-	,sp.zeros(2*N+3),sp.imag(GF2_F[:N])])
+	## zero-padding the arrays
+	FD_F    = sp.concatenate([FD_F[N:],sp.zeros(2*N+3),FD_F[:N]])
+	ImF1_F = sp.concatenate([sp.imag(F1_F[N:]),sp.zeros(2*N+3),sp.imag(F1_F[:N])])
+	ImF2_F = sp.concatenate([sp.imag(F2_F[N:]),sp.zeros(2*N+3),sp.imag(F2_F[:N])])
+	## performing the convolution
 	if channel == 'eh':
-#		ftImChi1_F = -fft(FD_F*ImGF1_F)*sp.conj(fft(ImGF2_F))*dE
-#		ftImChi2_F =  sp.conj(fft(FD_F*ImGF1_F))*fft(ImGF2_F)*dE
-		ftImChi1_F = -fft(FD_F*ImGF2_F)*sp.conj(fft(ImGF1_F))*dE
-		ftImChi2_F =  sp.conj(fft(FD_F*ImGF1_F))*fft(ImGF2_F)*dE
-	else:
-		ftImChi1_F = fft(FD_F*ImGF1_F)*fft(ImGF2_F)*dE
-		ftImChi2_F = -sp.conj(fft(FD_F*sp.flipud(ImGF2_F)))*fft(ImGF1_F)*dE
+		ftImChi1_F =  sp.conj(fft(FD_F*ImF2_F))*fft(ImF1_F)*dE		# f(x)F2(x)F1(w+x)
+		ftImChi2_F = -fft(FD_F*ImF1_F)*sp.conj(fft(ImF2_F))*dE		# f(x)F1(x)F2(x-w)
+	elif channel == 'ee':
+		ftImChi1_F =  fft(FD_F*ImF2_F)*fft(ImF1_F)*dE					# f(x)F2(x)F1(w-x)
+		ftImChi2_F = -sp.conj(fft(FD_F*sp.flipud(ImF1_F)))*fft(ImF2_F)*dE	# f(x)F1(-x)F2(w+x)
 	ImChi_F = -sp.real(ifft(ftImChi1_F+ftImChi2_F))/sp.pi
 	ImChi_F = sp.concatenate([ImChi_F[3*N+4:],ImChi_F[:N+1]])
 	Chi_F = KramersKronigFFT(ImChi_F) + 1.0j*ImChi_F
@@ -317,19 +289,17 @@ def TwoParticleBubble(GF1_F,GF2_F,En_F,T,channel):
 
 
 def SelfEnergy(GF_F,ChiGamma_F,En_F,T):
-	""" calculating the dynamical self-energy from Schwinger-Dyson equation """
+	""" calculating the dynamical self-energy from the Schwinger-Dyson equation """
 	N = int((len(En_F)-1)/2)
 	dE = sp.around(En_F[1]-En_F[0],8)
 	FD_F = FillFD(En_F,T)
 	BE_F = FillBE(En_F,T)
-	FD_F = sp.concatenate([FD_F[N:],sp.zeros(2*N+3),FD_F[:N]])
-	BE_F = sp.concatenate([BE_F[N:],sp.zeros(2*N+3),BE_F[:N]])
-	# zero-padding the arrays
+	## zero-padding the arrays
+	FD_F   = sp.concatenate([FD_F[N:],sp.zeros(2*N+3),FD_F[:N]])
+	BE_F   = sp.concatenate([BE_F[N:],sp.zeros(2*N+3),BE_F[:N]])
 	ImGF_F = sp.concatenate([sp.imag(GF_F[N:]),sp.zeros(2*N+3),sp.imag(GF_F[:N])])
 	ImCG_F = sp.concatenate([sp.imag(ChiGamma_F[N:]),sp.zeros(2*N+3),sp.imag(ChiGamma_F[:N])])
-	# performing the convolution
-	#ftImSE1_F = sp.conj(fft(FD_F*ImCG_F))*fft(ImGF_F)*dE
-	#ftImSE2_F = -fft(FD_F*ImGF_F)*sp.conj(fft(ImCG_F))*dE
+	## performing the convolution
 	ftImSE1_F = -sp.conj(fft(BE_F*ImCG_F))*fft(ImGF_F)*dE
 	ftImSE2_F = -fft(FD_F*ImGF_F)*sp.conj(fft(ImCG_F))*dE
 	ImSE_F = sp.real(ifft(ftImSE1_F+ftImSE2_F))/sp.pi
@@ -342,21 +312,23 @@ def KramersKronigFFT(ImX_F):
 	"""	Hilbert transform used to calculate real part of a function from its imaginary part
 	uses piecewise cubic interpolated integral kernel of the Hilbert transform
 	use only if len(ImX_F)=2**m-1, uses fft from scipy.fftpack  """
-	N = int(len(ImX_F))
-	#A = sp.array(range(3,N+1),dtype='float64')
-	A = sp.array(range(3,N+1))
+	X_F = sp.copy(ImX_F)
+	N = int(len(X_F))
+	## be careful with the data type, orherwise it fails for large N
+	if N > 3e6: A = sp.arange(3,N+1,dtype='float64')
+	else:       A = sp.arange(3,N+1)  
 	X1 = 4.0*sp.log(1.5)
 	X2 = 10.0*sp.log(4.0/3.0)-6.0*sp.log(1.5)
-	# filling the kernel
-	#Kernel_F = sp.zeros(N-2,dtype='float64')
-	Kernel_F = sp.zeros(N-2)
+	## filling the kernel
+	if N > 3e6: Kernel_F = sp.zeros(N-2,dtype='float64')
+	else:       Kernel_F = sp.zeros(N-2)
 	Kernel_F = (1-A**2)*((A-2)*sp.arctanh(1.0/(1-2*A))+(A+2)*sp.arctanh(1.0/(1+2*A)))\
 	+((A**3-6*A**2+11*A-6)*sp.arctanh(1.0/(3-2*A))+(A+3)*(A**2+3*A+2)*sp.arctanh(1.0/(2*A+3)))/3.0
 	Kernel_F = sp.concatenate([-sp.flipud(Kernel_F),sp.array([-X2,-X1,0.0,X1,X2]),Kernel_F])/sp.pi
-	# zero-padding the functions for fft
-	ImXExt_F = sp.concatenate([ImX_F[int((N-1)/2):],sp.zeros(N+2),ImX_F[:int((N-1)/2)]])
+	## zero-padding the functions for fft
+	ImXExt_F = sp.concatenate([X_F[int((N-1)/2):],sp.zeros(N+2),X_F[:int((N-1)/2)]])
 	KernelExt_F = sp.concatenate([Kernel_F[N:],sp.zeros(1),Kernel_F[:N]])
-	# performing the fft
+	## performing the fft
 	ftReXExt_F = -fft(ImXExt_F)*fft(KernelExt_F)
 	ReXExt_F = sp.real(ifft(ftReXExt_F))
 	ReX_F = sp.concatenate([ReXExt_F[int((3*N+3)/2+1):],ReXExt_F[:int((N-1)/2+1)]])
@@ -373,38 +345,39 @@ def XIntegralsFFT(GF_F,Bubble_F,Lambda,BubZero,T,En_F):
 	KV_F = Lambda*Kappa_F*V_F**2
 	KmV_F = Lambda*sp.flipud(sp.conj(Kappa_F))*V_F**2
 	FD_F = FillFD(En_F,T)
-	# zero-padding the arrays
+	## zero-padding the arrays
 	FD_F = sp.concatenate([FD_F[N:],sp.zeros(2*N+2),FD_F[:N+1]])
 	ImGF_F  = sp.concatenate([sp.imag(GF_F[N:]),sp.zeros(2*N+2),sp.imag(GF_F[:N+1])])
 	ImGF2_F = sp.concatenate([sp.imag(GF_F[N:]**2),sp.zeros(2*N+2),sp.imag(GF_F[:N+1]**2)])
 	ImV_F = sp.concatenate([sp.imag(V_F[N:]),sp.zeros(2*N+2),sp.imag(V_F[:N+1])])
 	ImKV_F = sp.concatenate([sp.imag(KV_F[N:]),sp.zeros(2*N+2),sp.imag(KV_F[:N+1])])
 	ImKmV_F = sp.concatenate([sp.imag(KmV_F[N:]),sp.zeros(2*N+2),sp.imag(KmV_F[:N+1])])
-	# performing the convolution
+	## performing the convolution
 	ftImX11_F = -sp.conj(fft(FD_F*ImV_F))*fft(ImGF2_F)*dE
 	ftImX12_F = fft(FD_F*ImGF2_F)*sp.conj(fft(ImV_F))*dE
 	ftImX21_F = -sp.conj(fft(FD_F*ImKV_F))*fft(ImGF_F)*dE
 	ftImX22_F = fft(FD_F*ImGF_F)*sp.conj(fft(ImKV_F))*dE
 	ftImX31_F = -sp.conj(fft(FD_F*ImKmV_F))*fft(ImGF_F)*dE
 	ftImX32_F = fft(FD_F*ImGF_F)*sp.conj(fft(ImKmV_F))*dE
-	# inverse transform
+	## inverse transform
 	ImX1_F =  sp.real(ifft(ftImX11_F+ftImX12_F))/sp.pi
 	ImX2_F =  sp.real(ifft(ftImX21_F+ftImX22_F))/sp.pi
 	ImX3_F = -sp.real(ifft(ftImX31_F+ftImX32_F))/sp.pi
 	ImX1_F = sp.concatenate([ImX1_F[3*N+4:],ImX1_F[:N+1]])
 	ImX2_F = sp.concatenate([ImX2_F[3*N+4:],ImX2_F[:N+1]])
 	ImX3_F = sp.concatenate([ImX3_F[3*N+4:],ImX3_F[:N+1]])
-	# getting real part from imaginary
+	## getting real part from imaginary
 	X1_F = KramersKronigFFT(ImX1_F) + 1.0j*ImX1_F + BubZero # constant part !!!
 	X2_F = KramersKronigFFT(ImX2_F) + 1.0j*ImX2_F
 	X3_F = KramersKronigFFT(ImX3_F) + 1.0j*ImX3_F
 	return [X1_F,X2_F,X3_F]
 
 
-def WriteFile(En_F,X1_F,X2_F,X3_F,U,Gamma,en,WriteMax,de_dec,header,filename,chat):
+## output functions #######################################
+
+def WriteFile(En_F,X1_F,X2_F,X3_F,WriteMax,de_dec,header,filename,chat):
 	""" writes data arrays to file, writes three complex arrays at once """
 	f = open(filename,'w')
-	f.write('# U = {0: .4f}, Delta = {1: .4f}, Ed = {2: .4f}\n'.format(U,Gamma,en))
 	f.write(header+'\n')
 	for i in range(len(En_F)):
 		if sp.fabs(En_F[i]) <= WriteMax and sp.fabs(En_F[i] - sp.around(En_F[i],de_dec)) == 0:
@@ -412,12 +385,12 @@ def WriteFile(En_F,X1_F,X2_F,X3_F,U,Gamma,en,WriteMax,de_dec,header,filename,cha
 			.format(float(En_F[i]),float(sp.real(X1_F[i])),float(sp.imag(X1_F[i])),float(sp.real(X2_F[i]))\
 			,float(sp.imag(X2_F[i])),float(sp.real(X3_F[i])),float(sp.imag(X3_F[i]))))
 	f.close
-	if chat: print('# File '+filename+' written.')
+	if chat: print('#   File '+filename+' written.')
 
-def WriteFile2(En_F,X1_F,X2_F,X3_F,X4_F,U,Delta,en,WriteMax,de_dec,header,filename,chat):
+
+def WriteFile2(En_F,X1_F,X2_F,X3_F,X4_F,WriteMax,de_dec,header,filename,chat):
 	""" writes data arrays to file, writes four complex arrays at once """
 	f = open(filename,'w')
-	f.write('# U = {0: .4f}, Delta = {1: .4f}, Ed = {2: .4f}\n'.format(U,Delta,en))
 	f.write(header+'\n')
 	for i in range(len(En_F)):
 		if sp.fabs(En_F[i]) <= WriteMax and sp.fabs(En_F[i] - sp.around(En_F[i],de_dec)) == 0:
@@ -426,7 +399,7 @@ def WriteFile2(En_F,X1_F,X2_F,X3_F,X4_F,U,Delta,en,WriteMax,de_dec,header,filena
 			,float(sp.imag(X2_F[i])),float(sp.real(X3_F[i])),float(sp.imag(X3_F[i]))\
 			,float(sp.real(X4_F[i])),float(sp.imag(X4_F[i]))))
 	f.close
-	if chat: print('# File '+filename+' written.')
+	if chat: print('#   File '+filename+' written.')
 
 ## parlib.py end ###
 

@@ -5,7 +5,7 @@ dE               : 1e-4
 PrecLambda       : 1e-6
 PrecSigmaT       : 1e-3
 PrecN            : 1e-4
-alpha            : 1.0
+alpha            : 0.5
 
 ;GFtype           : semi
 GFtype           : lor
@@ -13,7 +13,6 @@ GFtype           : lor
 ;GFtype           : sc
 ;GFtype           : sq
 
-GFmethod         : H
 calcSusc         : 0
 
 [IO]
@@ -25,4 +24,5 @@ WriteDataFile    : 0
 
 WriteMax         : 30
 WriteStep        : 3
+
 
