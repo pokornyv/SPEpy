@@ -4,13 +4,13 @@ SPEpy
 
 SPEpy (**S**implified **P**arquet **E**quations in **py**thon), is a python3 code to solve 
 the one-band single-impurity Anderson model (SIAM) or the one-band Hubbard model within the 
-_simplified parquet equation scheme_ (SPE) as described in Refs. [1-3]. 
-This solver can also be used self-consistently as a solver in the DMFT loop (metallic solutions only, experimental
-implementation). This version is capable of solving SIAM with Lorentzian, Gaussian, semi-elliptic and the 
+_simplified parquet equation scheme_ (SPE) as described in Refs. [1-3].
+This version is capable of solving SIAM with Lorentzian, Gaussian, semi-elliptic and the 
 square- and simple-cubic-lattice non-interacting density of states (DoS).  
 
-The DMFT loop is implemented only for the Bethe lattice with semi-elliptic DoS. This code is more a 
-proof of concept than a real DMFT solver, and should be used as that.  
+This solver can also be used self-consistently as a solver in the DMFT loop. 
+The DMFT loop is implemented only for the Bethe lattice with semi-elliptic DoS and gives metallic 
+solutions only. This code is more a proof of concept than a real DMFT solver, and should be used as that.  
 
 This code is still subject to heavy development and 
 big changes. It requires deep knowledge of the method to obtain reasonable results. 

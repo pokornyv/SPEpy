@@ -43,14 +43,15 @@ config.read(cfile)
 
 NE               = 21
 dE               = 1e-4
-PrecLambda       = 1e-6
-PrecSigmaT       = 1e-3
-PrecN            = 1e-4
+epsl             = 1e-6
+epst             = 1e-3
+epsn             = 1e-6
 alpha            = 1.0
+SCsolver         = 'fixed'
 GFtype           = 'lor'
 GFmethod         = 'H'
 calcSusc         = True
-cat              = True
+chat             = True
 WriteGF          = True
 WriteVertex      = False
 WriteNpz         = False
@@ -70,12 +71,14 @@ if config.has_option('params','PrecSigmaT'):
 	epst     = float(config.get('params','PrecSigmaT'))
 if config.has_option('params','PrecN'):
 	epsn     = float(config.get('params','PrecN'))
+if config.has_option('params','alpha'):
+	alpha    = float(config.get('params','alpha'))
+if config.has_option('params','SCsolver'):
+	SCsolver = str(config.get('params','SCsolver'))
 if config.has_option('params','GFtype'):
 	GFtype   = str(config.get('params','GFtype'))
 if config.has_option('params','calcSusc'):
 	calcSusc = bool(int(config.get('params','calcSusc')))
-if config.has_option('params','alpha'):
-	alpha    = float(config.get('params','alpha'))
 if config.has_option('params','GFmethod'):
 	GFmethod = str(config.get('params','GFmethod'))
 
