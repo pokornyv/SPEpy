@@ -30,9 +30,9 @@ WriteMax     : 10.0
 WriteStep    : 3
 ```
   
-##Description
+## Description
 
-###[params] section
+### [params] section
 
 - *U* - Coulomb interaction
 - *Delta* - hybridization, not used in this code, only for compatibility
@@ -49,7 +49,7 @@ WriteStep    : 3
 
 - *alpha* - mixing parameter between self-energies from previous and current iterations; alpha=1 means no mixing
 
-###[IO] section
+### [IO] section
 
 - *WriteFiles* - 0/1 switch whether write output files with Green functions and self-energy
 - *WriteOutput* - 0/1 switch whether write output to standard IO (e.g. screen)
