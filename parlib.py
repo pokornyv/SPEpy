@@ -124,8 +124,8 @@ def GreensFunctionSquare(x,izero,W):
 	using elliptic integral of the first kind K(z) from mpmath """
 	from mpmath import ellipk
 	K = sp.frompyfunc(ellipk,1,1)
-	x = (1.0/W)*x+1.0j*izero
-	return sp.array(2.0*K(1.0/x**2)/(sp.pi*x),dtype=complex)
+	x = x+1.0j*izero
+	return sp.array(2.0*K((W/x)**2)/(sp.pi*x),dtype=complex)
 
 
 def GreensFunctionSC(x,W):

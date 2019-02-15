@@ -14,6 +14,7 @@ PrecSigmaT   : 1e-4
 PrecN        : 1e-4
 SCsolver     : 'fixed'
 ;SCsolver    : 'iter'
+;SCsolver    : 'root'
 alpha        : 0.5
 
 ;GFtype       : semi
@@ -35,9 +36,9 @@ WriteMax         : 10
 WriteStep        : 3
 ```
   
-## Description
+##Description
 
-### [params] section
+###[params] section
 
 - *NE* - the energy axis contains 2^NE+1 points (caution, NE>21 can cause trouble with signed int overflow)  
 - *dE* - discretization of the energy axis  
@@ -51,7 +52,7 @@ the Lambda vertex (*siam_parquet*), alpha=1 means no mixing
 sc - simple-cubic lattice, sq - square lattice  
 - *calcSusc* - 0/1 switch whether calculate susceptibilities (it takes a lot of time), used only in *siam_static*  
 
-### [IO] section
+###[IO] section
 
 - *WriteOutput* - 0/1 switch whether write calculation details to standard output  
 - *WriteFileGreenF* - 0/1 switch whether write output file with Green functions and self-energy  

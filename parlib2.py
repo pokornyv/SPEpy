@@ -9,8 +9,9 @@
 import scipy as sp
 from scipy.integrate import simps
 from scipy.fftpack import fft,ifft
-from scipy.optimize import brentq,fixed_point
+from scipy.optimize import brentq,fixed_point,root
 from parlib import KramersKronigFFT,FillFD,FillBE,KramersKronigFFT,TwoParticleBubble
+from time import time
 
 absC = lambda z: sp.real(z)**2+sp.imag(z)**2
 
@@ -22,7 +23,7 @@ def LambdaVertexD(U,K,BDFD):
 def KvertexD(i1,i2,Lpp,Lmp,Gup_A,Gdn_A,En_A,T):
 	''' reducible K vertex Eq. (42ab) '''
 	GG = CorrelatorGGzero(Gdn_A,Gup_A,En_A,T)
-	#print("# GG0: {0: .8f}".format(GG))
+	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
 	if i1 == 1: ## K(+,+)
 		K = -Lpp**2*GG-absC(Lmp)*sp.conj(GG)-Lpp*(absC(Lpp)-absC(Lmp))*absC(GG)
 	else:       ## K(-,+)
@@ -82,6 +83,7 @@ def CorrelatorGG(G1_A,G2_A,En_A,i1,i2,T):
 	GG_A = ifft(ftF1_A*ftF2_A*dE)
 	## undo the zero padding
 	GG_A = sp.concatenate([GG_A[3*N+4:],GG_A[:N+1]])
+	## recalculate real part via KK
 	GG_A = KramersKronigFFT(sp.imag(GG_A)) + 1.0j*sp.imag(GG_A)
 	return -GG_A/(2.0j*sp.pi)
 
@@ -104,9 +106,19 @@ def LambdaD(i1,i2,Gup_A,Gdn_A,Lpp,Lmp,En_A,U,T):
 	RFD    = ReBDDFDD(i1,i2,Gup_A,Gdn_A,En_A,T)
 	IFD    = ImBDDFDD(i1,i2,Gup_A,Gdn_A,En_A,T)
 	Lambda = U/(1.0+K*(RFD+1.0j*IFD))
+	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(Lambda),sp.imag(Lambda)))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,RFD,IFD))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(K),sp.imag(K)))
 	return Lambda
+
+
+def VecLambdaD(Gup_A,Gdn_A,Lpp,Lmp,En_A,U,T):
+	''' calculates both Lambda vertices L(++), L(-+), returns differences '''
+	Lpp2 = LambdaD( 1, 1,Gup_A,Gdn_A,Lpp,Lmp,En_A,U,T)
+	Lmp2 = LambdaD(-1, 1,Gup_A,Gdn_A,Lpp,Lmp,En_A,U,T)
+	print("{0: .8f}\t{1: .8f}\t{2: .8f}\t{3: .8f}"\
+	.format(sp.real(Lpp2),sp.imag(Lpp2),sp.real(Lmp2),sp.imag(Lmp2)))
+	return [Lpp2-Lpp, Lmp2-Lmp]
 
 
 def CalculateLambdaD(Gup_A,Gdn_A,En_A,Lpp,Lmp,U,T,eps,alpha,chat,sc_scheme):
@@ -118,18 +130,23 @@ def CalculateLambdaD(Gup_A,Gdn_A,En_A,Lpp,Lmp,U,T,eps,alpha,chat,sc_scheme):
 	global GG1_A,GG2_A,GG3_A,GG4_A
 	FD_A = FillFD(En_A,T)
 	BE_A = FillBE(En_A,T)
-	if chat: print('# - calculating correlators...')
+	## correlators do not change with iterations
+	t = time()
+	if chat: print('# - calculating correlators... ',end='',flush=True)
 	GG1_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1, 1,T)
 	GG2_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1, 1,T)
 	GG3_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1,-1,T)
 	GG4_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1,-1,T)
-	if chat: print('# - ...done')
+	if chat: print(' done in {0: .2f} seconds.'.format(time()-t))
 	#print('# corr. GG0 {0: .8f} {1:+8f}i'.format(sp.real(GG1_A[int((len(En_A)-1)/2)]),sp.imag(GG1_A[int((len(En_A)-1)/2)])))
 	#from parlib import WriteFile2
 	#WriteFile2(En_A,GG1_A,GG2_A,GG3_A,GG4_A,100.0,3,'','GG.dat',1)
 	#exit()
 	[LppOld,LmpOld] = [1e8,1e8]
+	if sc_scheme == 'iter': [diffpp,diffmp] = [1e8,1e8]
 	k = 1
+	#print(LambdaD( 1, 1,Gup_A,Gdn_A,Lppmax,Lmpmax,En_A,U,T).real)
+	#print(LambdaD( 1, 1,Gup_A,Gdn_A,Lppmax,Lmpmax,En_A,U,T).imag)
 	while any([sp.fabs(sp.real(Lpp-LppOld))>eps,sp.fabs(sp.real(Lmp-LmpOld))>eps]):
 		[LppOld,LmpOld] = [Lpp,Lmp]
 		Eqnpp = lambda x: LambdaD( 1, 1,Gup_A,Gdn_A,x,Lmp,En_A,U,T)
@@ -140,11 +157,26 @@ def CalculateLambdaD(Gup_A,Gdn_A,En_A,Lpp,Lmp,U,T,eps,alpha,chat,sc_scheme):
 				Lmp = fixed_point(Eqnmp,Lmp,xtol=eps)
 			except RuntimeError:
 				print("# - CalculateLambdaD: No convergence in fixed-point algorithm.")
-				print("# - Switch SCsolver to 'iter' in siam.in and try again.")
+				print("# - Switch SCsolver to 'iter' or 'root' in siam.in and try again.")
 				exit(1)
-		else:	## iter
-			Lpp = alpha*Eqnpp(Lpp)+(1.0-alpha)*LppOld
-			Lmp = alpha*Eqnmp(Lmp)+(1.0-alpha)*LmpOld
+		elif sc_scheme == 'iter':
+			#print('alpha',alpha)
+			[diffppOld,diffmpOld] = [diffpp,diffmp]
+			Lpp = alpha*Eqnpp(Lpp) + (1.0-alpha)*LppOld
+			Lmp = alpha*Eqnmp(Lmp) + (1.0-alpha)*LmpOld
+			diffpp = sp.fabs(sp.real(Lpp-LppOld))
+			diffmp = sp.fabs(sp.real(Lmp-LmpOld))
+			if all([diffpp<diffppOld,diffmp<diffmpOld]): alpha = sp.amin([1.1*alpha,1.0])
+		elif sc_scheme == 'root':
+			## implemented only for real Lambdas
+			eqn = lambda x: VecLambdaD(Gup_A,Gdn_A,x[0],x[1],En_A,U,T)
+			sol = root(eqn,[Lpp,Lmp],method='lm')
+			#print("# Solution:",sol.x)
+			[Lpp,Lmp] = [sol.x[0],sol.x[1]]
+			break ## we don't need the outer loop here
+		else:
+			print('# CalculateLambdaD: Unknown SCsolver')
+			exit(1)
 		if chat: print('# - - iter. {0: 3d}: Lambda(++): {1: .8f} {2:+8f}i  Lambda(-+): {3: .8f} {4:+8f}i'\
 		.format(k,sp.real(Lpp),sp.imag(Lpp),sp.real(Lmp),sp.imag(Lmp)))
 		k += 1
@@ -152,17 +184,17 @@ def CalculateLambdaD(Gup_A,Gdn_A,En_A,Lpp,Lmp,U,T,eps,alpha,chat,sc_scheme):
 
 
 def CorrelatorsSE(Gup_A,Gdn_A,En_A,i1,i2,T):
-	''' correlators to Theta function '''
+	''' correlators to Theta function, updated '''
 	N = int((len(En_A)-1)/2)
 	dE = sp.around(En_A[1]-En_A[0],8)
 	#FD_A = FillFD(En_A,T)
 	## zero-padding the arrays, G1 and G2 are complex functions
-	FDex_A  = sp.concatenate([FD_A[N:], sp.zeros(2*N+3), FD_A[:N]])
-	Fup_A = sp.concatenate([Gup_A[N:],sp.zeros(2*N+3),Gup_A[:N]])
-	Fdn_A = sp.concatenate([Gdn_A[N:],sp.zeros(2*N+3),Gdn_A[:N]])
-	ftIGG1_A = sp.conj(fft(FDex_A*sp.imag(Fup_A)))*fft(Fdn_A)*dE
-	ftGG2_A  = fft(FDex_A*Fdn_A)*sp.conj(fft(Fup_A))*dE
-	ftGG3_A  = fft(FDex_A*sp.conj(Fdn_A))*sp.conj(fft(Fup_A))*dE
+	FDex_A = sp.concatenate([FD_A[N:], sp.zeros(2*N+3), FD_A[:N]])
+	Fup_A  = sp.concatenate([Gup_A[N:],sp.zeros(2*N+3),Gup_A[:N]])
+	Fdn_A  = sp.concatenate([Gdn_A[N:],sp.zeros(2*N+3),Gdn_A[:N]])
+	ftIGG1_A = fft(FDex_A*sp.imag(Fdn_A))*sp.conj(fft(Fup_A))*dE
+	ftGG2_A  = sp.conj(fft(FDex_A*sp.conj(Fup_A)))*fft(Fdn_A)*dE
+	ftGG3_A  = sp.conj(fft(FDex_A*Fup_A))*fft(Fdn_A)*dE
 	IGG1_A   = -ifft(ftIGG1_A)/sp.pi
 	GG2_A    = -ifft(ftGG2_A)/(2.0j*sp.pi)
 	GG3_A    = -ifft(ftGG3_A)/(2.0j*sp.pi)
@@ -176,13 +208,13 @@ def CorrelatorsSE(Gup_A,Gdn_A,En_A,i1,i2,T):
 def Theta(Gup_A,Gdn_A,En_A,Lpp,Lmp,T):
 	''' auxiliary function to calculate spectral self-energy '''
 	GG0 = CorrelatorGGzero(Gup_A,Gdn_A,En_A,T)
-	#print("# GG0: {0: .8f}".format(GG0))
+	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
 	gpp = Lpp+(absC(Lpp)-absC(Lmp))*sp.conj(GG0)
 	gmp = Lmp
 	[IGG1_A,GG2_A,GG3_A] = CorrelatorsSE(Gup_A,Gdn_A,En_A,1,1,T)
 	#from parlib import WriteFile
 	#WriteFile(En_A,IGG1_A,GG2_A,GG3_A,100,3,'#','ThetaGG.dat',1)
-	Theta_A = gpp*IGG1_A+gpp*GG2_A-gmp*GG3_A
+	Theta_A = gmp*IGG1_A+gpp*GG2_A-gmp*GG3_A
 	return Theta_A
 
 
@@ -212,6 +244,30 @@ def SelfEnergyD(Gup_A,Gdn_A,En_A,Lpp,Lmp,U,T,spin):
 	ImSE_A     = sp.concatenate([ImSE_A[3*N+4:],ImSE_A[:N+1]])
 	Sigma_A    = KramersKronigFFT(ImSE_A) + 1.0j*ImSE_A
 	return Sigma_A
+
+
+"""
+def CorrelatorsSE_old(Gup_A,Gdn_A,En_A,i1,i2,T):
+	''' correlators to Theta function '''
+	N = int((len(En_A)-1)/2)
+	dE = sp.around(En_A[1]-En_A[0],8)
+	#FD_A = FillFD(En_A,T)
+	## zero-padding the arrays, G1 and G2 are complex functions
+	FDex_A  = sp.concatenate([FD_A[N:], sp.zeros(2*N+3), FD_A[:N]])
+	Fup_A = sp.concatenate([Gup_A[N:],sp.zeros(2*N+3),Gup_A[:N]])
+	Fdn_A = sp.concatenate([Gdn_A[N:],sp.zeros(2*N+3),Gdn_A[:N]])
+	ftIGG1_A = sp.conj(fft(FDex_A*sp.imag(Fup_A)))*fft(Fdn_A)*dE
+	ftGG2_A  = fft(FDex_A*Fdn_A)*sp.conj(fft(Fup_A))*dE
+	ftGG3_A  = fft(FDex_A*sp.conj(Fdn_A))*sp.conj(fft(Fup_A))*dE
+	IGG1_A   = -ifft(ftIGG1_A)/sp.pi
+	GG2_A    = -ifft(ftGG2_A)/(2.0j*sp.pi)
+	GG3_A    = -ifft(ftGG3_A)/(2.0j*sp.pi)
+	## undo the zero padding
+	IGG1_A = sp.concatenate([IGG1_A[3*N+4:],IGG1_A[:N+1]])
+	GG2_A  = sp.concatenate([ GG2_A[3*N+4:], GG2_A[:N+1]])
+	GG3_A  = sp.concatenate([ GG3_A[3*N+4:], GG3_A[:N+1]])
+	return [IGG1_A,GG2_A,GG3_A]
+"""
 
 """
 def CalculateLambdaD2(GFup_A,GFdn_A,En_A,Lpp,Lmp,alpha,U,T):

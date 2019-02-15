@@ -171,7 +171,6 @@ if chat: print('# - Calculation of the Hartree-Fock self-energy finished after {
 if chat: print('#\n# calculating the spectral self-energy:')
 SigmaUp_A = SelfEnergyD(GFTup_A,GFTdn_A,En_A,Lambdapp,Lambdamp,U,T,'up')
 SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,En_A,Lambdapp,Lambdamp,U,T,'dn')
-#WriteFile(En_A,SigmaUp_A,SigmaDn_A,En_A,p.WriteMax,p.WriteStep,parline,'sigma.out',chat)
 
 ## quasiparticle weights ##################################
 [Zup,dReSEupdw] = QuasiPWeight(En_A,sp.real(SigmaUp_A))

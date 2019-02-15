@@ -8,6 +8,7 @@ PrecN            : 1e-4
 alpha            : 0.5
 SCsolver         : 'fixed'
 ;SCsolver         : 'iter'
+;SCsolver         : 'root'
 
 ;GFtype           : semi
 GFtype           : lor

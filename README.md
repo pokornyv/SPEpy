@@ -38,12 +38,13 @@ for which we already have results and we want to use them as the initial conditi
 not necessary but they occasionaly speed up the calculation.
 
 #### TODO list:
-- [x] The quasiparticle residue *Z* is not calculated correctly due to an instability in the 
-numerical differentiation procedure (needs testing).
 - [x] Fix *RuntimeWarning: overflow encountered in exp* in `FermiDirac` and `BoseEinstein`.
+- [ ] The quasiparticle residue *Z* is not always calculated correctly due to an instability in the 
+numerical differentiation procedure (needs testing).
 - [ ] Fix signed int overflow in `KramersKronigFFT`.
 - [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
 - [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.
+- [ ] Implement magnetic field to *siam_parquet.py*.
 - [ ] Temperature dependence in *siam_parquet.py* works only to small temperatures.
 - [ ] Update the dmft code for the new concept (needs testing, works only at half-filling).
 - [ ] Speed-up the simple-cubic/square lattice calculation by using the Hilbert transform (maybe not possible).
