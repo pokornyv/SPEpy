@@ -32,26 +32,37 @@ def KvertexD(i1,i2,Lpp,Lpm,Gup_A,Gdn_A):
 	return K
 
 
-def ReBDDFDD(i1,i2,Gup_A,Gdn_A):
+def ReBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
 	''' function to check the sum of imaginary parts of FD and BD ints. '''
+	N = int((len(En_A)-1)/2)
 	if i1 == 1: ## i2 is always +1
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(Gdn_A))
 	elif i1 == -1:
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(sp.conj(Gdn_A)))
 	Int2_A = sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A))/sp.flipud(sp.conj(Det_A)))
-	RBF = simps((FD_A+BE_A)*Int1_A-FD_A*Int2_A,En_A)/sp.pi
+	## here we multiply big and small numbers for energies close to zero
+	RBF1_A    = sp.exp(sp.log(FB_A)+sp.log(Int1_A))
+	RBF1_A[N] = (RBF1_A[N-1] + RBF1_A[N+1])/2.0
+	RBF2_A    = -FD_A*Int2_A
+	RBF       = simps(RBF1_A+RBF2_A,En_A)/sp.pi
 	#print(' Re(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(RBF),i1,i2))
+	if printint:
+		from parlib import WriteFile2
+		WriteFile2(Int1_A,Int2_A,RBF1_A,RBF2_A,1.0,4,'','RBF'+str(i1)+'.dat')
 	return RBF
 
 
-def ImBDDFDD(i1,i2,Gup_A,Gdn_A):
+def ImBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
 	''' function to check the sum of imaginary parts of FD and BD ints. '''
 	if i1 == 1: ## i2 is always +1
 		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.conj(Gdn_A))
 	elif i1 == -1:
 		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(sp.flipud(Gdn_A)))
-	IBF = simps((FD_A+BE_A)*Int_A,En_A)/sp.pi
+	IBF = simps(FB_A*Int_A,En_A)/sp.pi
 	#print(' Im(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(IBF),i1,i2))
+	if printint:
+		from parlib import WriteFile2
+		WriteFile2(Det_A,1.0/Det_A,Int_A,FB_A*Int_A,1.0,4,'','IBF'+str(i1)+'.dat')
 	return IBF
 
 
@@ -78,7 +89,7 @@ def CorrelatorGG(G1_A,G2_A,En_A,i1,i2):
 	## undo the zero padding
 	GG_A = sp.concatenate([GG_A[3*N+4:],GG_A[:N+1]])
 	## recalculate real part via KK
-	GG_A = KramersKronigFFT(sp.imag(GG_A)) + 1.0j*sp.imag(GG_A)
+	#GG_A = KramersKronigFFT(sp.imag(GG_A)) + 1.0j*sp.imag(GG_A)
 	return -GG_A/(2.0j*sp.pi)
 
 
@@ -105,8 +116,8 @@ def LambdaD(i1,i2,Gup_A,Gdn_A,Lpp,Lpm):
 	global GG1_A,GG2_A,GG3_A,GG4_A,Det_A
 	Det_A  = DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A)
 	K      = KvertexD(i1,i2,Lpp,Lpm,Gup_A,Gdn_A)
-	RFD    = ReBDDFDD(i1,i2,Gup_A,Gdn_A)
-	IFD    = ImBDDFDD(i1,i2,Gup_A,Gdn_A)
+	RFD    = ReBDDFDD(i1,i2,Gup_A,Gdn_A,0)
+	IFD    = ImBDDFDD(i1,i2,Gup_A,Gdn_A,0)
 	Lambda = U/(1.0+K*(RFD+1.0j*IFD))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(Lambda),sp.imag(Lambda)))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,RFD,IFD))

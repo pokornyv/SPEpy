@@ -12,9 +12,9 @@ dE           : 1e-4
 PrecLambda   : 1e-6
 PrecSigmaT   : 1e-4
 PrecN        : 1e-4
-SCsolver     : 'fixed'
-;SCsolver    : 'iter'
-;SCsolver    : 'root'
+;SCsolver     : 'fixed'
+;SCsolver     : 'iter'
+SCsolver     : 'root'
 alpha        : 0.5
 
 ;GFtype       : semi
@@ -23,7 +23,7 @@ GFtype        : lor
 ;GFtype       : sc
 ;GFtype       : sq
 
-calcSusc         : 0
+calcSusc      : 0
 
 [IO]
 

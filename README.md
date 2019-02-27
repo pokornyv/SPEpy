@@ -27,9 +27,9 @@ SPEpy is a free software distributed under the GPL license.
 [github.com/pokornyv/SPEpy](https://github.com/pokornyv/SPEpy)
 
 #### Usage:
-- `python3 siam_static.py <float U> <float Delta> <float eps> <float T>`  
-- `python3 siam_parquet.py <float U> <float Delta> <float eps> <float T> <float h> <float LppIn> <float LpmIn>`  
-- `python3 2nd_order.py <float U> <float Delta> <float eps> <float T>`  
+- `python3 siam_static.py <U> <Delta> <eps> <T>`  
+- `python3 siam_parquet.py <U> <Delta> <eps> <T> <h> <LppIn> <LpmIn>`  
+- `python3 2nd_order.py <U> <Delta> <eps> <T>`  
 - `python3 dmft_parquet.py`  
 
 where *python3* is the alias for the python 3 interpreter. Model and method parameters are declared in the

@@ -6,9 +6,9 @@ PrecLambda       : 1e-6
 PrecSigmaT       : 1e-3
 PrecN            : 1e-4
 alpha            : 0.5
-SCsolver         : 'fixed'
+;SCsolver         : 'fixed'
 ;SCsolver         : 'iter'
-;SCsolver         : 'root'
+SCsolver         : 'root'
 
 ;GFtype           : semi
 GFtype           : lor

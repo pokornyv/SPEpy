@@ -89,6 +89,9 @@ else:
 	print('# Error: DoS not implemented.')
 	exit(1)
 
+## write the distributions to a file, for development only
+#WriteFile(FD_A,BE_A,FB_A,1,4,parline,'dist.dat')
+
 ## using the Lambda from the older method as a starting point
 if chat: print('# calculating the fully static vertex at half-filling as a starting point:')
 GFzero_A = GFlambda(En_A)
@@ -156,10 +159,10 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	if chat: print('# - K vertex:           K(++): {0: .8f} {1:+8f}i       K(-+): {2: .8f} {3:+8f}i'\
 	.format(sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
 	## check the integrals:
-	RFDpp = ReBDDFDD( 1, 1,GFTup_A,GFTdn_A)
-	IFDpp = ImBDDFDD( 1, 1,GFTup_A,GFTdn_A)
-	RFDmp = ReBDDFDD(-1, 1,GFTup_A,GFTdn_A)
-	IFDmp = ImBDDFDD(-1, 1,GFTup_A,GFTdn_A)
+	RFDpp = ReBDDFDD( 1, 1,GFTup_A,GFTdn_A,0)
+	IFDpp = ImBDDFDD( 1, 1,GFTup_A,GFTdn_A,0)
+	RFDmp = ReBDDFDD(-1, 1,GFTup_A,GFTdn_A,0)
+	IFDmp = ImBDDFDD(-1, 1,GFTup_A,GFTdn_A,0)
 	if chat: print('# - aux. integrals:     X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
 	.format(RFDpp,IFDpp,RFDmp,IFDmp))
 	## symmetric Lambda vertex

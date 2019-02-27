@@ -146,8 +146,24 @@ def FillBE(En_A,T):
 	sp.seterr(over='warn')
 	return BE_A
 
+
+def FillFDplusBE(En_A,T):
+	""" fill an array with a som of Bose-Einstein and Fermi-Dirac
+	numerically more precise than the sum of the above functions due to a pole in BE """
+	N = int((len(En_A)-1)/2)
+	sp.seterr(over=  'ignore') ## ignore overflow in sinh
+	sp.seterr(divide='ignore') ## we deal with the pole ourselves
+	if T == 0.0: FB_A = 0.0
+	else:        
+		FB_A = 1.0/sp.sinh(En_A/T)
+		FB_A[N] = 0.0
+	sp.seterr(divide='warn')
+	sp.seterr(over=  'warn')
+	return FB_A
+
 FD_A = FillFD(En_A,T)
 BE_A = FillBE(En_A,T)
+FB_A = FillFDplusBE(En_A,T)
 
 ## config_siam.py end ##
 
