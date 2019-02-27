@@ -1,8 +1,7 @@
 ###########################################################
 # SPEpy - simplified parquet equation solver for SIAM     #
-# Vladislav Pokorny; 2015-2019; pokornyv@fzu.cz           #
+# Copyright (C) 2019  Vladislav Pokorny; pokornyv@fzu.cz  #
 # homepage: github.com/pokornyv/SPEpy                     #
-# developed and optimized using python 3.7.2              #
 # params_siam.py - reading parameter file                 #
 ###########################################################
 
@@ -17,12 +16,15 @@ U      = float(argv[1])
 Delta  = float(argv[2])
 ed     = float(argv[3])
 T      = float(argv[4])
-h      = 0.0         ## magnetic field not yet implemented
+try:
+	h = float(argv[5])
+except IndexError:
+	h = 0.0
 
 ## reading guess for Lambdas from command line
 try:
-	LppIn = float(argv[5])
-	LmpIn = float(argv[6])
+	LppIn = float(argv[6])
+	LmpIn = float(argv[7])
 	Lin = True
 except IndexError:
 	LppIn = LmpIn = 0.0
@@ -46,7 +48,7 @@ dE               = 1e-4
 epsl             = 1e-6
 epst             = 1e-3
 epsn             = 1e-6
-alpha            = 1.0
+alpha            = 0.5
 SCsolver         = 'fixed'
 GFtype           = 'lor'
 GFmethod         = 'H'
@@ -113,6 +115,39 @@ def FillEnergies(dE,N):
 N = 2**NE-1
 dE_dec = int(-sp.log10(dE))
 En_A = FillEnergies(dE,N)
+
+###########################################################
+## particle distributions #################################
+
+offE = 1e-12
+
+FermiDirac      = lambda E,T: 1.0/(sp.exp((E+offE)/T)+1.0)
+BoseEinstein    = lambda E,T: 1.0/(sp.exp((E+offE)/T)-1.0)
+FermiDiracDeriv = lambda E,T: -(1.0/T)*sp.exp((E+offE)/T)/(sp.exp((E+offE)/T)+1.0)**2
+
+def FillFD(En_A,T):
+	""" fill an array with Fermi-Dirac distribution """
+	N = int((len(En_A)-1)/2)
+	sp.seterr(over='ignore') ## ignore overflow in exp, not important in this calculation
+	if T == 0.0: FD_A = 1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
+	else:        FD_A = FermiDirac(En_A,T)
+	sp.seterr(over='warn')
+	return FD_A
+
+
+def FillBE(En_A,T):
+	""" fill an array with Bose-Einstein distribution """
+	N = int((len(En_A)-1)/2)
+	sp.seterr(over='ignore') ## ignore overflow in exp, not important in this calculation
+	if T == 0.0: BE_A = -1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
+	else:        
+		BE_A = BoseEinstein(En_A,T)
+		BE_A[N] = -0.5
+	sp.seterr(over='warn')
+	return BE_A
+
+FD_A = FillFD(En_A,T)
+BE_A = FillBE(En_A,T)
 
 ## config_siam.py end ##
 

@@ -1,8 +1,7 @@
 ###########################################################
 # SPEpy - simplified parquet equation solver for SIAM     #
-# Vladislav Pokorny; 2015-2019; pokornyv@fzu.cz           #
+# Copyright (C) 2019  Vladislav Pokorny; pokornyv@fzu.cz  #
 # homepage: github.com/pokornyv/SPEpy                     #
-# developed and optimized using python 3.7.2              #
 # dmft_parquet.py - solver for Hubbard model using DMFT   #
 # self-consistency and static parqet solver               #
 ###########################################################
@@ -30,7 +29,7 @@ if chat:
 	print('# python version: '+str(ver)+', SciPy version: '+str(sp.version.version))
 	print('# U = {0: .4f}, Delta = {1: .4f}, eps = {2: .4f}, T = {3: .4f}'.format(U,Delta,ef,T))
 	print('# energy axis: [{0: .5f} ..{1: .5f}], step = {2: .5f}, length = {3: 3d}'\
-      .format(En_F[0],En_F[-1],dE,len(En_F)))
+      .format(En_A[0],En_A[-1],dE,len(En_A)))
 	print("# Kondo temperature Tk ~{0: .5f}".format(float(KondoTemperature(U,Delta,ef))))
 	print("# mixing parameter alpha ={0: .5f}".format(float(alpha)))
 
@@ -43,10 +42,10 @@ if chat:
 if chat: print('# using semielliptic non-interacting DoS')
 W = Delta # half-bandwidth for semielliptic DoS
 GFlambda = lambda x: GreensFunctionSemi(x,W)
-GFzero_F = GFlambda(En_F)
+GFzero_F = GFlambda(En_A)
 
 if chat: print('# norm[G0]: {0: .6f}, n[G0]: {1: .6f}'\
-.format(float(IntDOS(GFzero_F,En_F)),float(Filling(GFzero_F,En_F,T))))
+.format(float(IntDOS(GFzero_F,En_A)),float(Filling(GFzero_F,En_A))))
 
 GFint_F = sp.copy(GFzero_F)
 SE_F    = sp.zeros_like(GFzero_F)
@@ -79,11 +78,11 @@ for NLoop in range(NStart,NStart+NIter):
 
 	## calculate bath GF from lattice Dyson equation
 	GFbath_F = 1.0/(1.0/GFint_F + SEold_F)
-	#WriteFile(En_F,GFzero_F,GFbath_F,GFbath_F,WriteMax,WriteStep,'bath.dat',chat)
+	#WriteFile(En_A,GFzero_F,GFbath_F,GFbath_F,WriteMax,WriteStep,'bath.dat',chat)
 
 	## claculate the bubble
 	if chat: print('# calculating the two-particle bubble...')
-	Bubble_F = TwoParticleBubble(GFbath_F,GFbath_F,En_F,T,'eh')
+	Bubble_F = TwoParticleBubble(GFbath_F,GFbath_F,En_A,'eh')
 	BubZero = Bubble_F[int(N/2)]
 	Uc = -1.0/sp.real(BubZero)
 	if chat: 
@@ -92,7 +91,7 @@ for NLoop in range(NStart,NStart+NIter):
 
 	## calculate Lambda part of the vertex
 	if method == 'SPE':
-		Lambda = CalculateLambda(U,Bubble_F,GFbath_F,GFbath_F,En_F,T,chat,epsl)
+		Lambda = CalculateLambda(U,Bubble_F,GFbath_F,GFbath_F,En_A,chat,epsl)
 		if chat: print('# Lambda = {0: .5f}'.format(Lambda))
 		a = 1.0 + Lambda*sp.real(BubZero)
 		DLambda = sp.fabs(Lambda-LambdaOld)
@@ -109,24 +108,24 @@ for NLoop in range(NStart,NStart+NIter):
 		ChiDelta_F = U*Bubble_F*(K_F + Lambda)
 	elif method == '2nd':
 		ChiDelta_F = U**2*Bubble_F
-	SE_F = SelfEnergy(GFbath_F,ChiDelta_F,En_F,T)
+	SE_F = SelfEnergy(GFbath_F,ChiDelta_F,En_A)
 
 	## mix self-energy with previous iteration
 	SE_F = (alpha*SE_F + (1.0-alpha)*SEold_F)
 	SEold_F = sp.copy(SE_F)
 
 	## calculate the interacting GF from local Dyson equation
-	GFint_F = GFlambda(En_F-SE_F)
+	GFint_F = GFlambda(En_A-SE_F)
 	DOSF = -sp.imag(GFint_F[int(N/2)])/sp.pi
-	Norm = IntDOS(GFint_F,En_F)
-	[HWHM,DOSmax,wmax] = CalculateHWHM(GFint_F,En_F)
+	Norm = IntDOS(GFint_F,En_A)
+	[HWHM,DOSmax,wmax] = CalculateHWHM(GFint_F,En_A)
 	if chat: print('# Int A(w)dw (int) = {0: .5f}, DOS[0] = {1: .5f}, HWHM = {2: .6f}'\
 	.format(float(Norm),float(DOSF),float(HWHM)))
 
 	## write intermediate step to file
 	if WriteFiles:
 		filename = 'gf_iter'+str(NLoop)+'.dat'
-		WriteFile(En_F,GFbath_F,SE_F,GFint_F,WriteMax,WriteStep,'gf',filename,chat)
+		WriteFile(En_A,GFbath_F,SE_F,GFint_F,WriteMax,WriteStep,'gf',filename,chat)
 	## save int. GF and SE in case we want to continue iterations and remove an old one (npz files are large)
 	sp.savez_compressed('dmft_'+str(NLoop),GFint_F = GFint_F, SE_F = SE_F, Lambda = Lambda)
 	rm_filename = 'dmft_'+str(NLoop-2)+'.npz'
@@ -140,7 +139,7 @@ for NLoop in range(NStart,NStart+NIter):
 
 ## write the final GF to file
 filename = 'gf_U'+str(U)+'_dmft.dat'
-WriteFile(En_F,GFbath_F,SE_F,GFint_F,WriteMax,WriteStep,'gf',filename,chat)
+WriteFile(En_A,GFbath_F,SE_F,GFint_F,WriteMax,WriteStep,'gf',filename,chat)
 
 print('{0: .3f}\t{1: .3f}\t{2: .3f}\t{3: .3f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\n'\
 .format(U,Delta,ef,T,Lambda,float(a),float(Norm),float(DOSF),float(HWHM),float(DLambda)))

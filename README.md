@@ -12,13 +12,13 @@ This solver can also be used self-consistently as a solver in the DMFT loop.
 The DMFT loop is implemented only for the Bethe lattice with semi-elliptic DoS and gives metallic 
 solutions only. This code is more a proof of concept than a real DMFT solver, and should be used as that.  
 
-This code is still subject to heavy development and 
-big changes. It requires deep knowledge of the method to obtain reasonable results. 
-Codes also contain internal switches that allow e.g. to change the level of self-consistency contitions. 
+This code is still subject to heavy development and big changes. 
+It requires deep knowledge of the method to obtain reasonable results. 
+Codes also still contain non-documented internal switches. 
 Use only as an example how to implement SPE. Code *siam_parquet.py* is yet in early stage of development.  
 
-Code is now tested on python 3.7 with SciPy 1.1. Compatibility with older SciPy versions
-is not guaranteed. Some parts of code use [mpmath](mpmath.org) library to calculate special functions 
+Code is now tested on python 3.7 with [SciPy](https://www.scipy.org) 1.1. Compatibility with older SciPy versions
+is not guaranteed. Some parts of code use [mpmath](http://mpmath.org) library to calculate special functions 
 of complex variable and to perform abitrary-precision calculations. Tested with mpmath 1.0.
 
 SPEpy is a free software distributed under the GPL license.
@@ -28,24 +28,24 @@ SPEpy is a free software distributed under the GPL license.
 
 #### Usage:
 - `python3 siam_static.py <float U> <float Delta> <float eps> <float T>`  
-- `python3 siam_parquet.py <float U> <float Delta> <float eps> <float T> <LppIn> <LmpIn>`  
+- `python3 siam_parquet.py <float U> <float Delta> <float eps> <float T> <float h> <float LppIn> <float LpmIn>`  
 - `python3 2nd_order.py <float U> <float Delta> <float eps> <float T>`  
 - `python3 dmft_parquet.py`  
 
 where *python3* is the alias for the python 3 interpreter. Model and method parameters are declared in the
-*siam.in* and *dmft.in* files, respectively. *LppIn* and *LmpIn* are values of the irreducible vertex
-for which we already have results and we want to use them as the initial conditions. These parameters are 
-not necessary but they occasionaly speed up the calculation.
+*siam.in* and *dmft.in* files, respectively. *LppIn* and *LpmIn* are real parts of the irreducible vertex
+for which we already have results and we want to use it as the initial condition. 
+These parameters are not necessary but they occasionaly speed up the calculation.
 
 #### TODO list:
 - [x] Fix *RuntimeWarning: overflow encountered in exp* in `FermiDirac` and `BoseEinstein`.
 - [ ] The quasiparticle residue *Z* is not always calculated correctly due to an instability in the 
-numerical differentiation procedure (needs testing).
+numerical differentiation procedure.
 - [ ] Fix signed int overflow in `KramersKronigFFT`.
 - [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
 - [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.
 - [ ] Implement magnetic field to *siam_parquet.py*.
-- [ ] Temperature dependence in *siam_parquet.py* works only to small temperatures.
+- [ ] Temperature dependence in *siam_parquet.py* works only for small temperatures.
 - [ ] Update the dmft code for the new concept (needs testing, works only at half-filling).
 - [ ] Speed-up the simple-cubic/square lattice calculation by using the Hilbert transform (maybe not possible).
 
@@ -61,6 +61,7 @@ still in development
 - *config_dmft.py* - reads input file *dmft.in*, sets up basic global arrays
 - *siam_infile.md* - description of the *siam.in* file
 - *dmft_infile.md* - description of the *dmft.in* file
+- *LICENSE* - a copy of the GNU General Public License
 - *README.md* - this document
 
 #### Output files:

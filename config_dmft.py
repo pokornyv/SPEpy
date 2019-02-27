@@ -1,8 +1,7 @@
 ###########################################################
 # SPEpy - simplified parquet equation solver for SIAM     #
-# Vladislav Pokorny; 2015-2019; pokornyv@fzu.cz           #
+# Copyright (C) 2019  Vladislav Pokorny; pokornyv@fzu.cz  #
 # homepage: github.com/pokornyv/SPEpy                     #
-# developed and optimized using python 3.7.2              #
 # params_dmft.py - reading parameter file                 #
 ###########################################################
 
@@ -49,7 +48,8 @@ chat       = bool(int(config.get('IO','WriteOutput')))
 WriteMax   = float(config.get('IO','WriteMax'))
 WriteStep  = int(config.get('IO','WriteStep'))
 
-## energy axis #######################################################
+###########################################################
+## energy axis ############################################
 
 def FillEnergies(dE,N):
 	"""	returns the symmetric array of energies 
@@ -61,6 +61,39 @@ def FillEnergies(dE,N):
 N = 2**NE-1
 dE_dec = int(-sp.log10(dE))
 En_F = FillEnergies(dE,N)
+
+###########################################################
+## particle distributions #################################
+
+offE = 1e-12
+
+FermiDirac      = lambda E,T: 1.0/(sp.exp((E+offE)/T)+1.0)
+BoseEinstein    = lambda E,T: 1.0/(sp.exp((E+offE)/T)-1.0)
+FermiDiracDeriv = lambda E,T: -(1.0/T)*sp.exp((E+offE)/T)/(sp.exp((E+offE)/T)+1.0)**2
+
+def FillFD(En_A,T):
+	""" fill an array with Fermi-Dirac distribution """
+	N = int((len(En_A)-1)/2)
+	sp.seterr(over='ignore') ## ignore overflow in exp, not important in this calculation
+	if T == 0.0: FD_A = 1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
+	else:        FD_A = FermiDirac(En_A,T)
+	sp.seterr(over='warn')
+	return FD_A
+
+
+def FillBE(En_A,T):
+	""" fill an array with Bose-Einstein distribution """
+	N = int((len(En_A)-1)/2)
+	sp.seterr(over='ignore') ## ignore overflow in exp, not important in this calculation
+	if T == 0.0: BE_A = -1.0*sp.concatenate([sp.ones(N),[0.5],sp.zeros(N)])
+	else:        
+		BE_A = BoseEinstein(En_A,T)
+		BE_A[N] = -0.5
+	sp.seterr(over='warn')
+	return BE_A
+
+FD_A = FillFD(En_A,T)
+BE_A = FillBE(En_A,T)
 
 ## config_dmft.py end ###
 
