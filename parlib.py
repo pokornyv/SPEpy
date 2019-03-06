@@ -18,7 +18,7 @@ from config_siam import *
 ## auxiliary functions ####################################
 
 def KondoTemperature(U,Gamma,en):
-	""" calculating Kondo temperature """
+	''' calculating Kondo temperature '''
 	if U!=0.0 and Gamma!=0.0:
 		return sp.sqrt(U*Gamma/2.0)*sp.exp(-sp.pi*sp.fabs(U**2-4.0*en**2)/(8.0*U*Gamma))
 	else:
@@ -26,14 +26,14 @@ def KondoTemperature(U,Gamma,en):
 
 
 def IntDOS(GF_A):
-	""" the integral over the DOS, should be 1.0 """
+	''' the integral over the DOS, should be 1.0 '''
 	TailL =  sp.imag(GF_A)[ 0]*En_A[ 0]/sp.pi	# left tail
 	TailR = -sp.imag(GF_A)[-1]*En_A[-1]/sp.pi	# right tail
 	return -simps(sp.imag(GF_A),En_A)/sp.pi+TailL+TailR
 
 
 def Filling(GF_A):
-	""" calculates filling, the integral over (-inf,inf) of f(w)G(w) """
+	''' calculates filling, the integral over (-inf,inf) of f(w)G(w) '''
 	DOS_A = -FD_A*sp.imag(GF_A)/sp.pi
 	## old tail: fit by a/x**2
 	TailL1 = -DOS_A[ 0]*En_A[ 0]	# left tail
@@ -57,40 +57,40 @@ def Filling(GF_A):
 ## functions to calculate spectral density ################
 
 def GreensFunctionSemi(E,W):
-	"""	local Green's function for semielliptic band """
+	'''	local Green's function for semielliptic band '''
 	## small imaginary part helps to keep us on the right brach of the square root
 	gz = E+1e-12j
 	return (2.0*gz/W**2)*(1.0-sp.sqrt(1.0-W**2/gz**2))
 
 
 def DensitySemi(x,W):
-	""" particle denisty of a semi-elliptic band for T=0 """
+	''' particle denisty of a semi-elliptic band for T=0 '''
 	return sp.real(0.5 - x*sp.sqrt(W**2-x**2)/(sp.pi*W**2) - sp.arcsin(x/W)/sp.pi)
 
 
 def GreensFunctionLorenz(E,Delta):
-	"""	local Green's function for Lorentzian band """
+	'''	local Green's function for Lorentzian band '''
 	return 1.0/(E+1.0j*Delta)
 
 
 def DensityLorentz(x,Delta):
-	""" particle denisty of a Lorentzian band  for T=0 """
+	''' particle denisty of a Lorentzian band  for T=0 '''
 	return 0.5 - sp.arctan(x/Delta)/sp.pi
 
 
 def GreensFunctionGauss(E,Gamma):
-	"""	local Green's function for Gaussian band """
+	'''	local Green's function for Gaussian band '''
 	return -1.0j*sp.sqrt(sp.pi/(2.0*Gamma**2))*wofz(E/sp.sqrt(2.0*Gamma**2))
 
 
 def DensityGauss(x,Gamma):
-	""" particle denisty of a Gaussian band  for T=0 """
+	''' particle denisty of a Gaussian band  for T=0 '''
 	return (1.0+erf(x/sp.sqrt(2.0*Gamma**2)))/2.0
 
 
 def GreensFunctionSquare(x,izero,W):
-	""" local Green's function electrons on a 2D square lattice,
-	using elliptic integral of the first kind K(z) from mpmath """
+	''' local Green's function electrons on a 2D square lattice,
+	using elliptic integral of the first kind K(z) from mpmath '''
 	from mpmath import ellipk
 	K = sp.frompyfunc(ellipk,1,1)
 	x = x+1.0j*izero
@@ -98,7 +98,7 @@ def GreensFunctionSquare(x,izero,W):
 
 
 def GreensFunctionSC(x,W):
-	""" local Green's function electrons on a 3D sc lattice """
+	''' local Green's function electrons on a 3D sc lattice '''
 	## scipy version of hyp2f1 has precision issues arouns some points
 	#from scipy.special import hyp2f1
 	#K = lambda k: hyp2f1(0.5,0.5,1.0,k)*sp.pi/2.0 
@@ -116,7 +116,7 @@ def GreensFunctionSC(x,W):
 
 
 def ShiftGreensFunction(GF_A,shift):
-	""" fill the GF array with GF shifted by real, static self-energy """
+	''' fill the GF array with GF shifted by real, static self-energy '''
 	ReGF = InterpolatedUnivariateSpline(En_A,sp.real(GF_A))
 	ImGF = InterpolatedUnivariateSpline(En_A,sp.imag(GF_A))
 	GF_A = ReGF(En_A+shift)+1.0j*ImGF(En_A+shift)
@@ -124,8 +124,8 @@ def ShiftGreensFunction(GF_A,shift):
 
 
 def CalculateHWHM(GF_A):
-	""" calculates the half-width at half-maximum of the Kondo resonance 
-	and the maximum of the spectral function """
+	''' calculates the half-width at half-maximum of the Kondo resonance 
+	and the maximum of the spectral function '''
 	N = len(En_A)
 	IntMin = int((N+1)/2-int(0.5/dE))
 	IntMax = int((N+1)/2+int(0.5/dE))
@@ -143,7 +143,7 @@ def CalculateHWHM(GF_A):
 
 
 def QuasiPWeight(ReSE_A):
-	""" calculating the Fermi-liquid quasiparticle weight (residue) Z """
+	''' calculating the Fermi-liquid quasiparticle weight (residue) Z '''
 	N = len(En_A)
 	#M = int(1e-3/dE) if dE < 1e-3 else 1	# very fine grids lead to oscillations
 	# replace 1 with M below to dilute the grid
@@ -155,21 +155,21 @@ def QuasiPWeight(ReSE_A):
 ## bubbles and vertex functions ###########################
 
 def KVertex(Lambda,Bubble_A):
-	""" dynamical part of the two-particle vertex """
+	''' dynamical part of the two-particle vertex '''
 	## offE helps to prevent the 'RuntimeWarning: invalid value encountered in true_divide'
 	## that causes problems in non-symmetric cases while calculating SigmaT in siam_static.py
 	return -Lambda**2*Bubble_A/(1.0+Lambda*Bubble_A+offE)
 
 
 def PsiInt(K_A,GFup_A,GFdn_A):
-	""" integrating the static bubble \Psi = KxGxG, extended for finite temperatures"""
+	''' integrating the static bubble \Psi = KxGxG, extended for finite temperatures'''
 	Int_A = BE_A*sp.imag(sp.flipud(sp.conj(K_A*GFdn_A))*GFup_A)
 	TailL = -Int_A[0]*En_A[0]/2.0
 	return (simps(Int_A,En_A)+TailL)/sp.pi
 
 
 def LambdaFunction(Lambda,Bubble_A,GFup_A,GFdn_A):
-	""" function to calculate new Lambda from previous iteration """
+	''' function to calculate new Lambda from previous iteration '''
 	K_A = KVertex(Lambda,Bubble_A)
 	Psi = PsiInt(K_A,GFup_A,GFdn_A)
 	Lambda = U/(1.0+Psi)
@@ -178,7 +178,7 @@ def LambdaFunction(Lambda,Bubble_A,GFup_A,GFdn_A):
 
 
 def CalculateLambda(Bubble_A,GFup_A,GFdn_A):
-	""" function to calculate new Lambda from previous iteration """
+	''' function to calculate new Lambda from previous iteration '''
 	Uc = -1.0/sp.real(Bubble_A[int(len(En_A)/2)])
 	if Uc < 1e-6:
 		print('# Warning: CalculateLambda: critical U is very small, please check the bubble.')	
@@ -196,21 +196,21 @@ def CalculateLambda(Bubble_A,GFup_A,GFdn_A):
 ## susceptibilities #######################################
 
 def SusceptibilityTherm(a,GF_A):
-	""" susceptibility calculated from the thermal self-energy derivative """
+	''' susceptibility calculated from the thermal self-energy derivative '''
 	Int_A = FD_A*sp.imag(GF_A**2)
 	## what about tail???
 	return 2.0*simps(Int_A,En_A)/(a*sp.pi)
 
 
 def SusceptibilitySpec(U,Lambda,X_A,GF_A,BubZero):
-	""" susceptibility calculated from the spectral self-energy derivative """
+	''' susceptibility calculated from the spectral self-energy derivative '''
 	Int_A = FD_A*sp.imag(GF_A**2*(1.0-U*X_A/(1.0+Lambda*BubZero)))
 	## what about tail???
 	return 2.0*simps(Int_A,En_A)/sp.pi
 
 
 def SusceptibilityHF(U,GF_A,X_A):
-	""" susceptibility calculated from the full spectral self-energy derivative """
+	''' susceptibility calculated from the full spectral self-energy derivative '''
 	Int1_A = FD_A*sp.imag(GF_A**2*(1.0-U*X_A))
 	Int2_A = FD_A*sp.imag(GF_A**2*X_A)
 	I1 = simps(Int1_A,En_A)/sp.pi
@@ -219,7 +219,7 @@ def SusceptibilityHF(U,GF_A,X_A):
 
 
 def AFbubble(GFzero_A,MuBar):
-	""" non-local bubble for k=(pi,pi,pi) - antiferromagnetic case for sc lattice """
+	''' non-local bubble for k=(pi,pi,pi) - antiferromagnetic case for sc lattice '''
 	shFD_A = FillFD(En_A-MuBar,T)
 	F_A = -sp.imag(GFzero_A)*shFD_A/(sp.pi*En_A)
 	F_A[int(len(En_A)/2)] = 0.0 # we are taking the principal value
@@ -227,7 +227,7 @@ def AFbubble(GFzero_A,MuBar):
 
 
 def SpecHWHM(GFint_A):
-	""" Half-width at half-maximum of the spectral function """
+	''' Half-width at half-maximum of the spectral function '''
 	N = len(En_A)
 	DOSF = -sp.imag(GFint_A[N/2])/sp.pi	# value at Fermi energy
 	DOS = InterpolatedUnivariateSpline(En_A,-sp.imag(GFint_A)/sp.pi-DOSF/2.0)
@@ -237,7 +237,7 @@ def SpecHWHM(GFint_A):
 ## convolutions in Matsubara frequencies ##################
 
 def TwoParticleBubble(F1_A,F2_A,channel):
-	""" calculates the two-particle bubble, channel = 'eh', 'ee' """
+	''' calculates the two-particle bubble, channel = 'eh', 'ee' '''
 	N = int((len(En_A)-1)/2)
 	## zero-padding the arrays
 	exFD_A = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
@@ -257,7 +257,7 @@ def TwoParticleBubble(F1_A,F2_A,channel):
 
 
 def SelfEnergy(GF_A,ChiGamma_A):
-	""" calculating the dynamical self-energy from the Schwinger-Dyson equation """
+	''' calculating the dynamical self-energy from the Schwinger-Dyson equation '''
 	N = int((len(En_A)-1)/2)
 	## zero-padding the arrays
 	exFD_A = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
@@ -274,9 +274,9 @@ def SelfEnergy(GF_A,ChiGamma_A):
 
 
 def KramersKronigFFT(ImX_A):
-	"""	Hilbert transform used to calculate real part of a function from its imaginary part
+	'''	Hilbert transform used to calculate real part of a function from its imaginary part
 	uses piecewise cubic interpolated integral kernel of the Hilbert transform
-	use only if len(ImX_A)=2**m-1, uses fft from scipy.fftpack  """
+	use only if len(ImX_A)=2**m-1, uses fft from scipy.fftpack  '''
 	X_A = sp.copy(ImX_A)
 	N = int(len(X_A))
 	## be careful with the data type, orherwise it fails for large N
@@ -301,7 +301,7 @@ def KramersKronigFFT(ImX_A):
 
 
 def XIntegralsFFT(GF_A,Bubble_A,Lambda,BubZero):
-	""" calculate X integral using FFT """
+	''' calculate X integral to susceptibilities using FFT '''
 	N = int((len(En_A)-1)/2)
 	Kappa_A  = TwoParticleBubble(GF_A,GF_A**2,'eh')
 	Bubble_A = TwoParticleBubble(GF_A,GF_A,'eh')
@@ -338,39 +338,10 @@ def XIntegralsFFT(GF_A,Bubble_A,Lambda,BubZero):
 
 ## output functions #######################################
 
-def WriteFile(X1_A,X2_A,X3_A,WriteMax,de_dec,header,filename):
-	""" writes data arrays to file, writes three complex arrays at once """
-	f = open(filename,'w')
-	f.write("# file written "+ctime()+'\n')
-	f.write(header+'\n')
-	for i in range(len(En_A)):
-		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
-			f.write('{0: .6f}\t{1: .6f}\t{2: .6f}\t{3: .6f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\n'\
-			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
-			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))))
-	f.close
-	if chat: print('#   File '+filename+' written.')
-
-
-def WriteFile2(X1_A,X2_A,X3_A,X4_A,WriteMax,de_dec,header,filename):
-	""" writes data arrays to file, writes four complex arrays at once """
-	f = open(filename,'w')
-	f.write("# file written "+ctime()+'\n')
-	f.write(header+'\n')
-	for i in range(len(En_A)):
-		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
-			f.write('{0: .6f}\t{1: .6f}\t{2: .6f}\t{3: .6f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\n'\
-			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
-			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))\
-			,float(sp.real(X4_A[i])),float(sp.imag(X4_A[i]))))
-	f.close
-	if chat: print('#   File '+filename+' written.')
-
-
 def WriteFileX(X_L,WriteMax,de_dec,header,filename):
-	""" writes data arrays to file, writes multiple complex arrays at once 
+	''' writes data arrays to file, writes multiple complex arrays at once 
 	X_L is a list of complex arrays, WriteMax is the cutoff in energies,
-	de_dec is the density of the output and header is the header line """
+	de_dec is the density of the output and header is the header line '''
 	LN = len(X_L)
 	f = open(filename,'w')
 	f.write("# file written "+ctime()+'\n')
@@ -384,6 +355,36 @@ def WriteFileX(X_L,WriteMax,de_dec,header,filename):
 			f.write(line+'\n')
 	f.close
 	if chat: print('#   File '+filename+' written.')
+
+"""
+def WriteFile(X1_A,X2_A,X3_A,WriteMax,de_dec,header,filename):
+	''' writes data arrays to file, writes three complex arrays at once '''
+	f = open(filename,'w')
+	f.write("# file written "+ctime()+'\n')
+	f.write(header+'\n')
+	for i in range(len(En_A)):
+		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
+			f.write('{0: .6f}\t{1: .6f}\t{2: .6f}\t{3: .6f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\n'\
+			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
+			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))))
+	f.close
+	if chat: print('#   File '+filename+' written.')
+
+
+def WriteFile2(X1_A,X2_A,X3_A,X4_A,WriteMax,de_dec,header,filename):
+	''' writes data arrays to file, writes four complex arrays at once '''
+	f = open(filename,'w')
+	f.write("# file written "+ctime()+'\n')
+	f.write(header+'\n')
+	for i in range(len(En_A)):
+		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
+			f.write('{0: .6f}\t{1: .6f}\t{2: .6f}\t{3: .6f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\n'\
+			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
+			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))\
+			,float(sp.real(X4_A[i])),float(sp.imag(X4_A[i]))))
+	f.close
+	if chat: print('#   File '+filename+' written.')
+"""
 
 ## parlib.py end ###
 

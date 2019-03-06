@@ -9,33 +9,25 @@ import scipy as sp
 from scipy.integrate import simps
 from scipy.fftpack import fft,ifft
 from scipy.optimize import brentq,fixed_point,root
-from parlib import KramersKronigFFT#,TwoParticleBubble
+from parlib import KramersKronigFFT
 from time import time
 from config_siam import *
 
 absC = lambda z: sp.real(z)**2+sp.imag(z)**2
 
-def LambdaVertexD(U,K,BDFD):
-	''' irreducible Lambda vertex Eq. (35) '''
-	return U/(1.0+K*BDFD)
+###########################################################
+## integrals over the Green function ######################
+
+def DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A):
+	''' determinant '''
+	Det_A = 1.0+GG1_A*Lpp-(GG2_A-GG3_A)*Lpm-GG4_A*sp.conj(Lpp)-GG1_A*GG4_A*(absC(Lpp)-absC(Lpm))
+	return Det_A
 
 
-def KvertexD(i1,i2,Lpp,Lpm,Gup_A,Gdn_A):
-	''' reducible K vertex Eq. (39ab) '''
-	GG = CorrelatorGGzero(Gdn_A,Gup_A,1,1)
-	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
-	if i1 == 1: ## K(+,+)
-		K = -Lpp**2*GG-absC(Lpm)*sp.conj(GG)-Lpp*(absC(Lpp)-absC(Lpm))*absC(GG)
-	else:       ## K(-,+)
-		#K = -Lpm*(Lpp*GG+sp.conj(Lpp)*sp.conj(GG)+(absC(Lpp)-absC(Lpm))*absC(GG))
-		K = -Lpm*(2.0*sp.real(Lpp*GG)+(absC(Lpp)-absC(Lpm))*absC(GG))
-	return K
-
-
-def ReBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
-	''' function to check the sum of imaginary parts of FD and BD ints. '''
+def ReBDDFDD(i1,Gup_A,Gdn_A,printint):
+	''' function to calculate the sum of real parts of FD and BD integrals '''
 	N = int((len(En_A)-1)/2)
-	if i1 == 1: ## i2 is always +1
+	if i1 == 1: 
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(Gdn_A))
 	elif i1 == -1:
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(sp.conj(Gdn_A)))
@@ -47,16 +39,16 @@ def ReBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
 	RBF2_A    = -FD_A*Int2_A
 	TailL2    = -0.5*RBF2_A[0]*En_A[0] ## leading-order, 1/x**3 tail correction to Int2_A
 	RBF       =  (simps(RBF1_A+RBF2_A,En_A)+TailL2)/sp.pi
-	#print(' Re(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(RBF),i1,i2))
+	#print(' Re(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(RBF),i1))
 	if printint:
 		from parlib import WriteFileX
 		WriteFileX([Int1_A,Int2_A,RBF1_A,RBF2_A],100.0,4,'','RBF'+str(i1)+'.dat')
 	return RBF
 
 
-def ImBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
-	''' function to check the sum of imaginary parts of FD and BD ints. '''
-	if i1 == 1: ## i2 is always +1
+def ImBDDFDD(i1,Gup_A,Gdn_A,printint):
+	''' function to calculate the sum of imaginary parts of FD and BD integrals '''
+	if i1 == 1:
 		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(Gdn_A))
 	elif i1 == -1:
 		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A)))
@@ -68,15 +60,12 @@ def ImBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
 	return IBF
 
 
-def DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A):
-	''' determinant Eq. (40)  '''
-	Det_A = 1.0+GG1_A*Lpp-(GG2_A-GG3_A)*Lpm-GG4_A*sp.conj(Lpp)-GG1_A*GG4_A*(absC(Lpp)-absC(Lpm))
-	return Det_A
-
+###########################################################
+## correlators of Green functions #########################
 
 def CorrelatorGG(G1_A,G2_A,En_A,i1,i2):
-	''' <G1(x+i10)G2(x+w+i20)> Eq. (41) 
-     i1 and i2 are imaginary parts of w or w' '''
+	''' <G1(x+i10)G2(x+w+i20)> 
+     i1 and i2 are imaginary parts of arguments '''
 	N = int((len(En_A)-1)/2)
 	## zero-padding the arrays, G1 and G2 are complex functions
 	FDex_A = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
@@ -114,14 +103,29 @@ def IntGdiff(Gup_A,Gdn_A):
 	return -(Int+TailL+TailR)/(2.0j*sp.pi)
 
 
-def LambdaD(i1,i2,Gup_A,Gdn_A,Lpp,Lpm):
+###########################################################
+## two-particle vertex ####################################
+
+def KvertexD(i1,Lpp,Lpm,Gup_A,Gdn_A):
+	''' reducible K vertex Eq. (39ab) '''
+	GG = CorrelatorGGzero(Gdn_A,Gup_A,1,1)
+	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
+	if i1 == 1: ## K(+,+)
+		K = -Lpp**2*GG-absC(Lpm)*sp.conj(GG)-Lpp*(absC(Lpp)-absC(Lpm))*absC(GG)
+	else:       ## K(-,+)
+		#K = -Lpm*(Lpp*GG+sp.conj(Lpp)*sp.conj(GG)+(absC(Lpp)-absC(Lpm))*absC(GG))
+		K = -Lpm*(2.0*sp.real(Lpp*GG)+(absC(Lpp)-absC(Lpm))*absC(GG))
+	return K
+
+
+def LambdaVertexD(i2,Gup_A,Gdn_A,Lpp,Lpm):
 	''' calculates the Lambda vertex for given i1,i2 '''
 	global GG1_A,GG2_A,GG3_A,GG4_A,Det_A
 	Det_A  = DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A)
-	K      = KvertexD(i1,i2,Lpp,Lpm,Gup_A,Gdn_A)
-	RFD    = ReBDDFDD(i1,i2,Gup_A,Gdn_A,0)
-	IFD    = ImBDDFDD(i1,i2,Gup_A,Gdn_A,0)
-	Lambda = U/(1.0+K*(RFD+1.0j*IFD))
+	K      = KvertexD(i2,Lpp,Lpm,Gup_A,Gdn_A)
+	RXD    = ReBDDFDD(i2,Gup_A,Gdn_A,0)
+	IXD    = ImBDDFDD(i2,Gup_A,Gdn_A,0)
+	Lambda = U/(1.0+K*(RXD+1.0j*IXD))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(Lambda),sp.imag(Lambda)))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,RFD,IFD))
 	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(K),sp.imag(K)))
@@ -130,8 +134,8 @@ def LambdaD(i1,i2,Gup_A,Gdn_A,Lpp,Lpm):
 
 def VecLambdaD(Gup_A,Gdn_A,LppR,LppI,LpmR,LpmI):
 	''' calculates both Lambda vertices L(++), L(+-), returns differences '''
-	Lpp2 = LambdaD( 1, 1,Gup_A,Gdn_A,LppR+1.0j*LppI,LpmR+1.0j*LpmI)
-	Lpm2 = LambdaD(-1, 1,Gup_A,Gdn_A,LppR+1.0j*LppI,LpmR+1.0j*LpmI)
+	Lpp2 = LambdaVertexD( 1,Gup_A,Gdn_A,LppR+1.0j*LppI,LpmR+1.0j*LpmI)
+	Lpm2 = LambdaVertexD(-1,Gup_A,Gdn_A,LppR+1.0j*LppI,LpmR+1.0j*LpmI)
 	return [sp.real(Lpp2)-LppR,sp.imag(Lpp2)-LppI,sp.real(Lpm2)-LpmR,sp.imag(Lpm2)-LpmI]
 
 
@@ -158,8 +162,8 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 	while any([sp.fabs(sp.real(Lpp-LppOld))>epsl,sp.fabs(sp.real(Lpm-LpmOld))>epsl]):
 		[LppOld,LpmOld] = [Lpp,Lpm]
 		if SCsolver == 'fixed':
-			Eqnpp = lambda x: LambdaD( 1, 1,Gup_A,Gdn_A,x,Lpm)
-			Eqnpm = lambda x: LambdaD(-1, 1,Gup_A,Gdn_A,Lpp,x)
+			Eqnpp = lambda x: LambdaVertexD( 1,Gup_A,Gdn_A,x,Lpm)
+			Eqnpm = lambda x: LambdaVertexD(-1,Gup_A,Gdn_A,Lpp,x)
 			try:
 				Lpp = fixed_point(Eqnpp,Lpp,xtol=epsl)
 				Lpm = fixed_point(Eqnpm,Lpm,xtol=epsl)
@@ -170,8 +174,8 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 		elif SCsolver == 'iter':
 			print('# alpha: {0: .6f}'.format(alpha))
 			[diffppOld,diffpmOld] = [diffpp,diffpm]
-			Eqnpp = lambda x: LambdaD( 1, 1,Gup_A,Gdn_A,x,Lpm)
-			Eqnpm = lambda x: LambdaD(-1, 1,Gup_A,Gdn_A,Lpp,x)
+			Eqnpp = lambda x: LambdaVertexD( 1,Gup_A,Gdn_A,x,Lpm)
+			Eqnpm = lambda x: LambdaVertexD(-1,Gup_A,Gdn_A,Lpp,x)
 			Lpp = alpha*Eqnpp(Lpp) + (1.0-alpha)*LppOld
 			Lpm = alpha*Eqnpm(Lpm) + (1.0-alpha)*LpmOld
 			diffpp = sp.fabs(sp.real(Lpp-LppOld))
@@ -195,6 +199,9 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 		print([Lpp,Lpm])
 	return [Lpp,Lpm]
 
+
+###########################################################
+## dynamic self-energy ####################################
 
 def CorrelatorsSE(Gup_A,Gdn_A,i1,i2):
 	''' correlators to Theta function, updated '''
@@ -229,7 +236,7 @@ def Theta(Gup_A,Gdn_A,Lpp,Lmp):
 	return Theta_A
 
 
-def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,U,spin):
+def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
 	''' dynamic self-energy for spin-up '''
 	global GG1_A,GG2_A,GG3_A,GG4_A
 	#GG1_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1, 1)
@@ -240,8 +247,6 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,U,spin):
 	Theta_A  = Theta(Gup_A,Gdn_A,Lpp,Lmp)
 	Det_A    = DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)
 	Kernel_A = U*Theta_A/Det_A
-	#from parlib import WriteFileX
-	#if spin == 'up': WriteFileX([Gup_A,Gdn_A,Det_A],Theta_A,100,3,'','sedet.dat')
 	if spin == 'up': GF_A = sp.copy(Gdn_A) 
 	else:            GF_A = sp.copy(Gup_A) 
 	## zero-padding the arrays

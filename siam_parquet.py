@@ -152,17 +152,17 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	[Sigma0old,Sigma1old] = [Sigma0,Sigma1]
 	## Lambda vertex
 	[LambdaPP,LambdaPM] = CalculateLambdaD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM)
-	Kpp = KvertexD( 1, 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
-	Kmp = KvertexD(-1, 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
+	Kpp = KvertexD( 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
+	Kmp = KvertexD(-1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
 	if chat: print('# - Lambda vertex: Lambda(++): {0: .8f} {1:+8f}i  Lambda(+-): {2: .8f} {3:+8f}i'\
 	.format(sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM)))
 	if chat: print('# - K vertex:           K(++): {0: .8f} {1:+8f}i       K(-+): {2: .8f} {3:+8f}i'\
 	.format(sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
 	## check the integrals:
-	RFDpp = ReBDDFDD( 1, 1,GFTup_A,GFTdn_A,0)
-	IFDpp = ImBDDFDD( 1, 1,GFTup_A,GFTdn_A,0)
-	RFDmp = ReBDDFDD(-1, 1,GFTup_A,GFTdn_A,0)
-	IFDmp = ImBDDFDD(-1, 1,GFTup_A,GFTdn_A,0)
+	RFDpp = ReBDDFDD( 1,GFTup_A,GFTdn_A,0)
+	IFDpp = ImBDDFDD( 1,GFTup_A,GFTdn_A,0)
+	RFDmp = ReBDDFDD(-1,GFTup_A,GFTdn_A,0)
+	IFDmp = ImBDDFDD(-1,GFTup_A,GFTdn_A,0)
 	if chat: print('# - aux. integrals:     X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
 	.format(RFDpp,IFDpp,RFDmp,IFDmp))
 	## symmetric Lambda vertex
@@ -212,10 +212,11 @@ if chat: print('# - Calculation of the Hartree-Fock self-energy finished after {
 #.format(T,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
 
 Det_A = DeterminantGD(LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
-## write the determinant to a file, for development only
-#WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
 Dzero = Det_A[int((len(En_A)-1)/2)]
 if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
+## write the determinant to a file, for development only
+#WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
+
 ## check the zero of the determinant, development only
 #GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A,1,1)
 #CDD=1.0+2.0*sp.real(GG0*LambdaPP)+absC(GG0)*(absC(LambdaPP)-absC(LambdaPM))
@@ -227,8 +228,10 @@ if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.rea
 ###########################################################
 ## spectral self-energy ###################################
 if chat: print('#\n# calculating the spectral self-energy:')
-SigmaUp_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,U,'up')
-SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,U,'dn')
+SigmaUp_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'up')
+SigmaDn_A = sp.flipud(SigmaUp_A)
+#SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'dn')
+Sigma_A = (SigmaUp_A+SigmaDn_A)/2.0
 
 ## quasiparticle weights
 [Zup,dReSEupdw] = QuasiPWeight(sp.real(SigmaUp_A))
@@ -249,8 +252,8 @@ if chat: print('# - iterating the final density:')
 k = 1
 while any([sp.fabs(nUpOld-nUp) > epsn, sp.fabs(nDnOld-nDn) > epsn]):
 	[nUpOld,nDnOld] = [nUp,nDn]
-	nup_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(x+nDn-1.0)+(h-Sigma1)-SigmaUp_A)) - x
-	ndn_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(nUp+x-1.0)-(h-Sigma1)-SigmaDn_A)) - x
+	nup_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(x+nDn-1.0)+(h-Sigma1)-Sigma_A)) - x
+	ndn_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(nUp+x-1.0)-(h-Sigma1)-Sigma_A)) - x
 	nUp = brentq(nup_dens,0.0,1.0,xtol = epsn)
 	nDn = brentq(ndn_dens,0.0,1.0,xtol = epsn)
 	if chat: print('# - - {0: 3d}:   nUp: {1: .8f}, nDn: {2: .8f}'.format(k,nUp,nDn))
