@@ -6,7 +6,6 @@
 ###########################################################
 
 import scipy as sp
-import warnings
 from sys import exit
 from time import ctime
 from scipy.integrate import simps
@@ -364,6 +363,25 @@ def WriteFile2(X1_A,X2_A,X3_A,X4_A,WriteMax,de_dec,header,filename):
 			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
 			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))\
 			,float(sp.real(X4_A[i])),float(sp.imag(X4_A[i]))))
+	f.close
+	if chat: print('#   File '+filename+' written.')
+
+
+def WriteFileX(X_L,WriteMax,de_dec,header,filename):
+	""" writes data arrays to file, writes multiple complex arrays at once 
+	X_L is a list of complex arrays, WriteMax is the cutoff in energies,
+	de_dec is the density of the output and header is the header line """
+	LN = len(X_L)
+	f = open(filename,'w')
+	f.write("# file written "+ctime()+'\n')
+	f.write(header+'\n')
+	line = ''
+	for i in range(len(En_A)):
+		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
+			line = '{0: .6f}\t'.format(float(En_A[i]))
+			for k in range(LN):
+				line += '{0: .6f}\t{1: .6f}\t'.format(float(sp.real(X_L[k][i])),float(sp.imag(X_L[k][i])))
+			f.write(line+'\n')
 	f.close
 	if chat: print('#   File '+filename+' written.')
 

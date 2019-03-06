@@ -1,7 +1,7 @@
 ###########################################################
 # SPEpy - simplified parquet equation solver for SIAM     #
 # Copyright (C) 2019  Vladislav Pokorny; pokornyv@fzu.cz  #
-# homepage: githb.com/pokornyv/SPEpy                      #
+# homepage: github.com/pokornyv/SPEpy                     #
 # siam_dynamic.py - solver for SPE                        #
 # method described in <not published>                     #
 ###########################################################
@@ -27,7 +27,6 @@ from os import listdir
 from time import ctime,time
 from parlib import *
 from parlib2 import *
-#from config_siam import *
 
 t = time()
 
@@ -81,25 +80,25 @@ elif GFtype == 'sc':
 elif GFtype == 'sq':
 	if chat: print('# using square lattice non-interacting DoS')
 	W = Delta # half-bandwidth 
-	izero = 1e-6    ## imaginary shift of energiesto avoid poles
+	izero = 1e-6    ## imaginary shift of energies to avoid poles
 	GFlambda = lambda x: GreensFunctionSquare(x,izero,W)
 	print('# Error: this DoS is not yet implemented.')
 	exit(1)
 else:
-	print('# Error: DoS not implemented.')
+	print('# Error: DoS type "'+GFtype+'" not implemented.')
 	exit(1)
 
-## write the distributions to a file, for development only
-#WriteFile(FD_A,BE_A,FB_A,1,4,parline,'dist.dat')
+## write the distributions to a file, development only
+#WriteFileX([FD_A,BE_A,FB_A],1,4,parline,'dist.dat')
 
 ## using the Lambda from the older method as a starting point
-if chat: print('# calculating the fully static vertex at half-filling as a starting point:')
-GFzero_A = GFlambda(En_A)
-Bubble_A = TwoParticleBubble(GFzero_A,GFzero_A,'eh')
-#WriteFile(GFzero_A,GFzero_A,Bubble_A,WriteMax,WriteStep,parline,'bubble0.dat')
-Lambda0 = CalculateLambda(Bubble_A,GFzero_A,GFzero_A)
-if chat: print('# - Lambda0 = {0: .8f}'.format(Lambda0))
-
+if not Lin:
+	if chat: print('# calculating the fully static vertex at half-filling as a starting point:')
+	GFzero_A = GFlambda(En_A)
+	Bubble_A = TwoParticleBubble(GFzero_A,GFzero_A,'eh')
+	Lambda0 = CalculateLambda(Bubble_A,GFzero_A,GFzero_A)
+	if chat: print('# - Lambda0 = {0: .8f}'.format(Lambda0))
+	
 ########################################################
 ## calculate filling of the thermodynamic Green function
 if chat: print('#\n# calculating the initial thermodynamic Green function:')
@@ -123,20 +122,21 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 ## fill the Green functions
 GFTup_A = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0))
 GFTdn_A = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0))
+## write non-interacting GF to a file, development only
+#WriteFileX([GFTup_A,GFTdn_A],WriteMax,WriteStep,parline,'GFTzero.dat')
 
-#WriteFile(GFTup_A,GFTdn_A,En_A,WriteMax,WriteStep,parline,'GFTzero.dat')
 if chat: print('# - norm[GTup]: {0: .8f}, n[GTup]: {1: .8f}'\
 .format(float(IntDOS(GFTup_A)),float(nTup)))
 if chat: print('# - norm[GTdn]: {0: .8f}, n[GTdn]: {1: .8f}'\
 .format(float(IntDOS(GFTdn_A)),float(nTdn)))
 if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(float(nTup+nTdn),float(nTup-nTdn)))
 
-##############################
-## calculate the Lambda vertex
+###########################################################
+## calculate the Lambda vertex ############################
 if chat: print('#\n# calculating the Hartree-Fock self-energy:')
 if Lin:
 	## reading initial values from command line
-	[LambdaPP,LambdaPM] = [LppIn,LmpIn]	
+	[LambdaPP,LambdaPM] = [LppIn,LmpIn]
 else:
 	## using the static guess
 	[LambdaPP,LambdaPM] = [Lambda0,Lambda0]
@@ -166,11 +166,11 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	if chat: print('# - aux. integrals:     X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
 	.format(RFDpp,IFDpp,RFDmp,IFDmp))
 	## symmetric Lambda vertex
-	LambdaSymmPP = sp.real(LambdaPP)	##0.5*(LambdaPP+sp.conj(LambdaPP))
+	LambdaSymmPP = LambdaPP	
 	LambdaSymmPM = sp.real(LambdaPM)	##0.5*(LambdaPM+sp.conj(LambdaPM))
 	## HF self-energy
 	IG0 = IntGdiff(GFTup_A,GFTdn_A)
-	print('# IG0: {0: .8f} {1:+8f}i'.format(sp.real(IG0),sp.imag(IG0)))
+	if chat: print('# - integral <Gup-Gdn>: {0: .8f} {1:+8f}i'.format(sp.real(IG0),sp.imag(IG0)))
 	Sigma0 = U*(nTup+nTdn-1.0)/2.0
 	Sigma1 = 0.5*(LambdaSymmPP*IG0+LambdaSymmPM*sp.conj(IG0))
 	Sigma0 = alpha*Sigma0 + (1.0-alpha)*Sigma0old
@@ -195,27 +195,34 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 		nTup = nTdn = 0.5
 	## this is to convert complex to float, the warning is just a sanity check
 	if any([sp.fabs(sp.imag(nTup))>1e-6,sp.fabs(sp.imag(nTdn))>1e-6,]):
-		print('# Warning: non-zero imaginary part of nT, Up: {0: .8f}, Dn: {1: .8f}.'.format(sp.imag(nTup),sp.imag(nTdn)))
+		print('# Warning: non-zero imaginary part of nT, up: {0: .8f}, dn: {1: .8f}.'\
+		.format(sp.imag(nTup),sp.imag(nTdn)))
 	[nTup,nTdn] = [sp.real(nTup),sp.real(nTdn)]
 	if chat: print('# - static self-energy: normal: {0: .8f} {1:+8f}i, anomalous: {2: .8f} {3:+8f}i'.\
 	format(sp.real(Sigma0),sp.imag(Sigma0),sp.real(Sigma1),sp.imag(Sigma1)))
-	if chat: print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
-	if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(nTup+nTdn,nTup-nTdn))
-	if chat: print("{0: 3d}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}".format(k,nTup,nTdn,nTup+nTdn,nTup-nTdn))
+	if chat: 
+		print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
+		print('# - nT = {0: .8f}, mT = {1: .8f}'.format(nTup+nTdn,nTup-nTdn))
+		print('{0: 3d}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}'.format(k,nTup,nTdn,nTup+nTdn,nTup-nTdn))
 	k+=1
 
 if chat: print('# - Calculation of the Hartree-Fock self-energy finished after {0: 3d} iterations.'.format(int(k-1)))
 
-#print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t'\
-#.format(U,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM)))
+#print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}'\
+#.format(T,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
 
 Det_A = DeterminantGD(LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
+## write the determinant to a file, for development only
+#WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
 Dzero = Det_A[int((len(En_A)-1)/2)]
-GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A)
-CDD=1.0+2.0*sp.real(GG0*LambdaPP)+absC(GG0)*(absC(LambdaPP)-absC(LambdaPM))
-print("# check D(0): {0: .8f} {1:+8f}i".format(sp.real(CDD),sp.imag(CDD)))
+if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
+## check the zero of the determinant, development only
+#GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A,1,1)
+#CDD=1.0+2.0*sp.real(GG0*LambdaPP)+absC(GG0)*(absC(LambdaPP)-absC(LambdaPM))
+#print("# - check D(0): {0: .8f} {1:+8f}i".format(sp.real(CDD),sp.imag(CDD)))
 
-if chat: print('# - determinant at zero: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
+#print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}\t{9: .8f}'\
+#.format(U,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp),sp.real(Dzero)))
 
 ###########################################################
 ## spectral self-energy ###################################
@@ -223,7 +230,7 @@ if chat: print('#\n# calculating the spectral self-energy:')
 SigmaUp_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,U,'up')
 SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,U,'dn')
 
-## quasiparticle weights ##################################
+## quasiparticle weights
 [Zup,dReSEupdw] = QuasiPWeight(sp.real(SigmaUp_A))
 [Zdn,dReSEdndw] = QuasiPWeight(sp.real(SigmaDn_A))
 
@@ -236,7 +243,7 @@ if chat and h!=0.0: print('# - dn spin: Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*
 ## interacting Green function #############################
 if chat: print('#\n# calculating the spectral Green function:')
 if chat: print('# - iterating the final density:')
-[nUp,nDn] = [nTup,nTdn]	## for now
+[nUp,nDn] = [nTup,nTdn]
 [nUpOld,nDnOld] = [1e8,1e8]
 
 k = 1
@@ -254,12 +261,13 @@ GFintDn_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)-(h-Sigma1)-SigmaDn_A)
 
 [nUp,nDn] = [Filling(GFintUp_A),Filling(GFintDn_A)]
 if chat: print('# - spectral Green function filling: nUp = {0: .8f}, nDn = {1: .8f}'.format(nUp,nDn))
+if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(nUp+nDn,nUp-nDn))
 
-## DoS at Fermi energy ####################################
+## DoS at Fermi energy
 DOSFup = -sp.imag(GFintUp_A[int(N/2)])/sp.pi
 DOSFdn = -sp.imag(GFintDn_A[int(N/2)])/sp.pi
 
-## HWHM ###################################################
+## HWHM of the spectral function
 [HWHMup,DOSmaxUp,wmaxUp] = CalculateHWHM(GFintUp_A)
 [HWHMdn,DOSmaxDn,wmaxDn] = CalculateHWHM(GFintDn_A)
 if any([HWHMup == 0.0,HWHMdn == 0.0]) and chat: 
@@ -278,12 +286,12 @@ if chat: print('# - HWHM: spin-up: {0: .6f}, spin-dn: {1: .6f}'.format(float(HWH
 if WriteGF:
 	header = parline+'\n# E\t\tRe GF0\t\tIm GF0\t\tRe SE\t\tIm SE\t\tRe GF\t\tIm GF'
 	filename = 'gfUp_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
-	WriteFile(GFTup_A,SigmaUp_A,GFintUp_A,WriteMax,WriteStep,header,filename)
+	WriteFileX([GFTup_A,SigmaUp_A,GFintUp_A],WriteMax,WriteStep,header,filename)
 	if h!=0.0:	
 		filename = 'gfDn_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
-		WriteFile(GFTdn_A,SigmaDn_A,GFintDn_A,WriteMax,WriteStep,header,filename)
+		WriteFileX([GFTdn_A,SigmaDn_A,GFintDn_A],WriteMax,WriteStep,header,filename)
 
-print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
+print('{0: .4f}\t{1: .4f}\t{2: .5f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
 .format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Zup,DOSFup,sp.real(Dzero)))
 
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}'\
@@ -292,5 +300,4 @@ print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7:
 if chat: print('# '+argv[0]+' DONE after {0: .2f} seconds.'.format(float(time()-t)))
 
 ## siam_dynamic.py end ###
-
 

@@ -22,7 +22,7 @@ def LambdaVertexD(U,K,BDFD):
 
 def KvertexD(i1,i2,Lpp,Lpm,Gup_A,Gdn_A):
 	''' reducible K vertex Eq. (39ab) '''
-	GG = CorrelatorGGzero(Gdn_A,Gup_A)
+	GG = CorrelatorGGzero(Gdn_A,Gup_A,1,1)
 	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
 	if i1 == 1: ## K(+,+)
 		K = -Lpp**2*GG-absC(Lpm)*sp.conj(GG)-Lpp*(absC(Lpp)-absC(Lpm))*absC(GG)
@@ -41,28 +41,30 @@ def ReBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(sp.conj(Gdn_A)))
 	Int2_A = sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A))/sp.flipud(sp.conj(Det_A)))
 	## here we multiply big and small numbers for energies close to zero
-	RBF1_A    = sp.exp(sp.log(FB_A)+sp.log(Int1_A))
-	RBF1_A[N] = (RBF1_A[N-1] + RBF1_A[N+1])/2.0
+	#RBF1_A    = sp.exp(sp.log(FB_A)+sp.log(Int1_A))
+	RBF1_A    =  FB_A*Int1_A
+	RBF1_A[N] =  (RBF1_A[N-1] + RBF1_A[N+1])/2.0
 	RBF2_A    = -FD_A*Int2_A
-	RBF       = simps(RBF1_A+RBF2_A,En_A)/sp.pi
+	TailL2    = -0.5*RBF2_A[0]*En_A[0] ## leading-order, 1/x**3 tail correction to Int2_A
+	RBF       =  (simps(RBF1_A+RBF2_A,En_A)+TailL2)/sp.pi
 	#print(' Re(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(RBF),i1,i2))
 	if printint:
-		from parlib import WriteFile2
-		WriteFile2(Int1_A,Int2_A,RBF1_A,RBF2_A,1.0,4,'','RBF'+str(i1)+'.dat')
+		from parlib import WriteFileX
+		WriteFileX([Int1_A,Int2_A,RBF1_A,RBF2_A],100.0,4,'','RBF'+str(i1)+'.dat')
 	return RBF
 
 
 def ImBDDFDD(i1,i2,Gup_A,Gdn_A,printint):
 	''' function to check the sum of imaginary parts of FD and BD ints. '''
 	if i1 == 1: ## i2 is always +1
-		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.conj(Gdn_A))
+		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(Gdn_A))
 	elif i1 == -1:
-		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(sp.flipud(Gdn_A)))
+		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A)))
 	IBF = simps(FB_A*Int_A,En_A)/sp.pi
 	#print(' Im(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(IBF),i1,i2))
 	if printint:
-		from parlib import WriteFile2
-		WriteFile2(Det_A,1.0/Det_A,Int_A,FB_A*Int_A,1.0,4,'','IBF'+str(i1)+'.dat')
+		from parlib import WriteFileX
+		WriteFileX([Int_A,FB_A*Int_A],1.0,4,'','IBF'+str(i1)+'.dat')
 	return IBF
 
 
@@ -73,7 +75,7 @@ def DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A):
 
 
 def CorrelatorGG(G1_A,G2_A,En_A,i1,i2):
-	''' <G[s](x+w)G[s'](x+w')> Eq. (41) 
+	''' <G1(x+i10)G2(x+w+i20)> Eq. (41) 
      i1 and i2 are imaginary parts of w or w' '''
 	N = int((len(En_A)-1)/2)
 	## zero-padding the arrays, G1 and G2 are complex functions
@@ -88,13 +90,14 @@ def CorrelatorGG(G1_A,G2_A,En_A,i1,i2):
 	GG_A = ifft(ftF1_A*ftF2_A*dE)
 	## undo the zero padding
 	GG_A = sp.concatenate([GG_A[3*N+4:],GG_A[:N+1]])
-	## recalculate real part via KK
-	#GG_A = KramersKronigFFT(sp.imag(GG_A)) + 1.0j*sp.imag(GG_A)
-	return -GG_A/(2.0j*sp.pi)
+	TailL = -sp.real(G1_A)[0]*sp.real(G2_A)[0]*En_A[0] ## leading tail correction
+	return -(GG_A+TailL)/(2.0j*sp.pi)
 
 
-def CorrelatorGGzero(G1_A,G2_A):
-	''' <G[s](x)G[s'](x)> '''
+def CorrelatorGGzero(G1_A,G2_A,i1,i2):
+	''' <G1(x+i10)G2(x+i20)>, w=0 element of the CorrelatorGG '''
+	if i1 < 0: G1_A = sp.conj(G1_A)
+	if i2 < 0: G2_A = sp.conj(G2_A)
 	Int_A = FD_A*G1_A*G2_A
 	Int = simps(Int_A,En_A)
 	TailL = -sp.real(Int_A[ 0])*En_A[ 0]-0.5j*sp.imag(Int_A[ 0])*En_A[ 0]
@@ -129,8 +132,6 @@ def VecLambdaD(Gup_A,Gdn_A,LppR,LppI,LpmR,LpmI):
 	''' calculates both Lambda vertices L(++), L(+-), returns differences '''
 	Lpp2 = LambdaD( 1, 1,Gup_A,Gdn_A,LppR+1.0j*LppI,LpmR+1.0j*LpmI)
 	Lpm2 = LambdaD(-1, 1,Gup_A,Gdn_A,LppR+1.0j*LppI,LpmR+1.0j*LpmI)
-	#print("{0: .8f}\t{1: .8f}\t{2: .8f}\t{3: .8f}"\
-	#.format(sp.real(Lpp2),sp.imag(Lpp2),sp.real(Lmp2),sp.imag(Lmp2)))
 	return [sp.real(Lpp2)-LppR,sp.imag(Lpp2)-LppI,sp.real(Lpm2)-LpmR,sp.imag(Lpm2)-LpmI]
 
 
@@ -144,21 +145,21 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 	if chat: print('# - calculating correlators... ',end='',flush=True)
 	GG1_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1, 1)
 	GG2_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1, 1)
-	GG3_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1,-1)
-	GG4_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1,-1)
+	GG3_A = CorrelatorGG(Gdn_A,Gup_A,En_A, 1,-1)
+	GG4_A = CorrelatorGG(Gdn_A,Gup_A,En_A,-1,-1)
 	if chat: print(' done in {0: .2f} seconds.'.format(time()-t))
-	#print('# corr. GG0 {0: .8f} {1:+8f}i'.format(sp.real(GG1_A[int((len(En_A)-1)/2)]),sp.imag(GG1_A[int((len(En_A)-1)/2)])))
-	#from parlib import WriteFile2
-	#WriteFile2(GG1_A,GG2_A,GG3_A,GG4_A,100.0,3,'','GGcorr.dat')
+	#Np = int((len(En_A)-1)/2)
+	#print('# corr. GG0 {0: .8f} {1:+8f}i'.format(sp.real(GG2_A[Np]),sp.imag(GG2_A[Np])))
+	#print(CorrelatorGGzero(Gup_A,Gdn_A,-1,1))
 	#exit()
-	#print(LambdaD( 1, 1,Gup_A,Gdn_A,Lppmax,Lmpmax).real)
-	#print(LambdaD( 1, 1,Gup_A,Gdn_A,Lppmax,Lmpmax).imag)
+	#from parlib import WriteFileX
+	#WriteFileX([GG1_A,GG2_A,GG3_A,GG4_A],100.0,3,'','GGcorr.dat')
 	k = 1
 	while any([sp.fabs(sp.real(Lpp-LppOld))>epsl,sp.fabs(sp.real(Lpm-LpmOld))>epsl]):
 		[LppOld,LpmOld] = [Lpp,Lpm]
-		Eqnpp = lambda x: LambdaD( 1, 1,Gup_A,Gdn_A,x,Lpm)
-		Eqnpm = lambda x: LambdaD(-1, 1,Gup_A,Gdn_A,Lpp,x)
 		if SCsolver == 'fixed':
+			Eqnpp = lambda x: LambdaD( 1, 1,Gup_A,Gdn_A,x,Lpm)
+			Eqnpm = lambda x: LambdaD(-1, 1,Gup_A,Gdn_A,Lpp,x)
 			try:
 				Lpp = fixed_point(Eqnpp,Lpp,xtol=epsl)
 				Lpm = fixed_point(Eqnpm,Lpm,xtol=epsl)
@@ -169,6 +170,8 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 		elif SCsolver == 'iter':
 			print('# alpha: {0: .6f}'.format(alpha))
 			[diffppOld,diffpmOld] = [diffpp,diffpm]
+			Eqnpp = lambda x: LambdaD( 1, 1,Gup_A,Gdn_A,x,Lpm)
+			Eqnpm = lambda x: LambdaD(-1, 1,Gup_A,Gdn_A,Lpp,x)
 			Lpp = alpha*Eqnpp(Lpp) + (1.0-alpha)*LppOld
 			Lpm = alpha*Eqnpm(Lpm) + (1.0-alpha)*LpmOld
 			diffpp = sp.fabs(sp.real(Lpp-LppOld))
@@ -177,8 +180,7 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 		elif SCsolver == 'root':
 			## implemented for complex Lambdas as 4-dimensional problem
 			eqn = lambda x: VecLambdaD(Gup_A,Gdn_A,x[0],x[1],x[2],x[3])
-			sol = root(eqn,[Lpp,0.0,Lpm,0.0],method='lm')
-			#print("# Solution:",sol.x)
+			sol = root(eqn,[sp.real(Lpp),sp.imag(Lpp),sp.real(Lpm),sp.imag(Lpm)],method='lm')
 			[Lpp,Lpm] = [sol.x[0]+1.0j*sol.x[1],sol.x[2]+1.0j*sol.x[3]]
 			break ## we don't need the outer loop here
 		else:
@@ -190,6 +192,7 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 			print('# CalculateLambdaD: No convergence after 1000 iterations. Exit.')
 			exit(1)
 		k += 1
+		print([Lpp,Lpm])
 	return [Lpp,Lpm]
 
 
@@ -215,13 +218,13 @@ def CorrelatorsSE(Gup_A,Gdn_A,i1,i2):
 
 def Theta(Gup_A,Gdn_A,Lpp,Lmp):
 	''' auxiliary function to calculate spectral self-energy '''
-	GG0 = CorrelatorGGzero(Gup_A,Gdn_A)
+	GG0 = CorrelatorGGzero(Gup_A,Gdn_A,1,1)
 	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
 	gpp = Lpp+(absC(Lpp)-absC(Lmp))*sp.conj(GG0)
 	gmp = Lmp
 	[IGGs1_A,GGs2_A,GGs3_A] = CorrelatorsSE(Gup_A,Gdn_A,1,1)
-	#from parlib import WriteFile
-	#WriteFile(IGGs1_A,GGs2_A,GGs3_A,100,3,'','ThetaGG.dat')
+	#from parlib import WriteFileX
+	#WriteFileX([IGGs1_A,GGs2_A,GGs3_A],100,3,'','ThetaGG.dat')
 	Theta_A = gmp*IGGs1_A+gpp*GGs2_A-gmp*GGs3_A
 	return Theta_A
 
@@ -237,8 +240,8 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,U,spin):
 	Theta_A  = Theta(Gup_A,Gdn_A,Lpp,Lmp)
 	Det_A    = DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)
 	Kernel_A = U*Theta_A/Det_A
-	#from parlib import WriteFile2
-	#if spin == 'up': WriteFile2(Gup_A,Gdn_A,Det_A,Theta_A,100,3,'','sedet.dat')
+	#from parlib import WriteFileX
+	#if spin == 'up': WriteFileX([Gup_A,Gdn_A,Det_A],Theta_A,100,3,'','sedet.dat')
 	if spin == 'up': GF_A = sp.copy(Gdn_A) 
 	else:            GF_A = sp.copy(Gup_A) 
 	## zero-padding the arrays
@@ -254,44 +257,6 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,U,spin):
 	Sigma_A    = KramersKronigFFT(ImSE_A) + 1.0j*ImSE_A
 	return Sigma_A
 
-
-"""
-def FDD(i1,i2,Gup_A,Gdn_A,Det_A,En_A,T):
-	''' fermionic integral over the Green function Eq. (37) '''
-	from parlib import WriteFile
-	FD_A = FillFD(En_A,T)
-	#Int_A = BE_A*Gup_A*sp.conj(sp.flipud(Gdn_A))*sp.imag(1.0/Det_A)
-	if i1 == 1: ## i2 is always +1
-		Int1_A = -Gup_A*sp.imag(sp.flipud(Gdn_A))/sp.conj(sp.flipud(Det_A))
-		Int2_A =  sp.flipud(Gdn_A)*sp.imag(Gup_A)/sp.flipud(Det_A)
-#		WriteFile(En_A,Int_A,Gup_A,Gdn_A,0,0,0,30.0,3,'','FDDpp.dat',1)
-	elif i1 == -1:
-		Int1_A = -Gup_A*sp.imag(sp.flipud(Gdn_A))/sp.flipud(Det_A)
-		Int2_A =  sp.conj(sp.flipud(Gdn_A))*sp.imag(Gup_A)/sp.flipud(Det_A)
-#		WriteFile(En_A,Int_A,Gup_A,Gdn_A,0,0,0,30.0,3,'','FDDmp.dat',1)
-	#FDD1 = -simps(FD_A*Int1_A,En_A)/sp.pi
-	#FDD2 = -simps(FD_A*Int2_A,En_A)/sp.pi
-	FDD = -simps(FD_A*(Int1_A+Int2_A),En_A)/sp.pi
-	#print(' FDD1: {0: .8f} {1:+8f}i ({2: 2d},{3: 2d})'.format(sp.real(FDD1),sp.imag(FDD1),i1,i2))
-	#print(' FDD2: {0: .8f} {1:+8f}i ({2: 2d},{3: 2d})'.format(sp.real(FDD2),sp.imag(FDD2),i1,i2))
-	#print(' FDD: {0: .8f} {1:+8f}i ({2: 2d},{3: 2d})'.format(sp.real(FDD),sp.imag(FDD),i1,i2))
-	return FDD
-
-
-def BDD(i1,i2,Gup_A,Gdn_A,Det_A,En_A,T):
-	''' bosonic integral over the Green function Eq. (36) '''
-	from parlib import WriteFile
-	BE_A = FillBE(En_A,T)
-	if i1 == 1: ## i2 is always +1
-		Int_A = Gup_A*sp.flipud(Gdn_A)*sp.imag(1.0/sp.flipud(sp.conj(Det_A)))
-#		WriteFile(En_A,Int_A,Gup_A,Gdn_A,0,0,0,30.0,3,'','BDDpp.dat',1)
-	elif i1 == -1:
-		Int_A = Gup_A*sp.flipud(sp.conj(Gdn_A))*sp.imag(1.0/sp.flipud(sp.conj(Det_A)))
-#		WriteFile(En_A,Int_A,Gup_A,Gdn_A,0,0,0,30.0,3,'','BDDmp.dat',1)
-	BDD = simps(BE_A*Int_A,En_A)/sp.pi
-	#print(' BDD: {0: .8f} {1:+8f}i ({2: 2d},{3: 2d})'.format(sp.real(BDD),sp.imag(BDD),i1,i2))
-	return BDD
-"""
 
 ## parlib2.py end ###
 

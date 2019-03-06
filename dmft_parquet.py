@@ -78,7 +78,7 @@ for NLoop in range(NStart,NStart+NIter):
 
 	## calculate bath GF from lattice Dyson equation
 	GFbath_F = 1.0/(1.0/GFint_F + SEold_F)
-	#WriteFile(En_A,GFzero_F,GFbath_F,GFbath_F,WriteMax,WriteStep,'bath.dat',chat)
+	#WriteFileX([En_A,GFzero_F,GFbath_F,GFbath_F],WriteMax,WriteStep,'bath.dat',chat)
 
 	## claculate the bubble
 	if chat: print('# calculating the two-particle bubble...')
@@ -125,7 +125,7 @@ for NLoop in range(NStart,NStart+NIter):
 	## write intermediate step to file
 	if WriteFiles:
 		filename = 'gf_iter'+str(NLoop)+'.dat'
-		WriteFile(En_A,GFbath_F,SE_F,GFint_F,WriteMax,WriteStep,'gf',filename,chat)
+		WriteFileX([En_A,GFbath_F,SE_F,GFint_F],WriteMax,WriteStep,'gf',filename,chat)
 	## save int. GF and SE in case we want to continue iterations and remove an old one (npz files are large)
 	sp.savez_compressed('dmft_'+str(NLoop),GFint_F = GFint_F, SE_F = SE_F, Lambda = Lambda)
 	rm_filename = 'dmft_'+str(NLoop-2)+'.npz'
@@ -139,7 +139,7 @@ for NLoop in range(NStart,NStart+NIter):
 
 ## write the final GF to file
 filename = 'gf_U'+str(U)+'_dmft.dat'
-WriteFile(En_A,GFbath_F,SE_F,GFint_F,WriteMax,WriteStep,'gf',filename,chat)
+WriteFileX([En_A,GFbath_F,SE_F,GFint_F],WriteMax,WriteStep,'gf',filename,chat)
 
 print('{0: .3f}\t{1: .3f}\t{2: .3f}\t{3: .3f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\n'\
 .format(U,Delta,ef,T,Lambda,float(a),float(Norm),float(DOSF),float(HWHM),float(DLambda)))

@@ -153,7 +153,7 @@ def FillFDplusBE(En_A,T):
 	N = int((len(En_A)-1)/2)
 	sp.seterr(over=  'ignore') ## ignore overflow in sinh
 	sp.seterr(divide='ignore') ## we deal with the pole ourselves
-	if T == 0.0: FB_A = 0.0
+	if T == 0.0: FB_A = sp.zeros(len(En_A))
 	else:        
 		FB_A = 1.0/sp.sinh(En_A/T)
 		FB_A[N] = 0.0

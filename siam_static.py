@@ -89,7 +89,7 @@ if GFtype in ['sc','sq']:
 else:		
 	GFzero_A = GFlambda(En_A)
 	GFzero_A = GFzero_A/IntDOS(GFzero_A)
-#WriteFile(GFzero_A,GFzero_A,GFzero_A,WriteMax,WriteStep,'gf','GFzero.dat')
+#WriteFileX([GFzero_A,GFzero_A,GFzero_A],WriteMax,WriteStep,'gf','GFzero.dat')
 
 ## calculating the charge-symmetric case (n=0.5) to get Lambda0
 if chat: print('#\n# calculating the charge-symmetric solution:')
@@ -243,15 +243,15 @@ if any([WriteGF,WriteVertex,WriteNpz]):
 	#if calcSusc:
 	#	filename = 'X_'+GFtype+'_U'+str(U)+'.dat'
 	#	header = '# E\t\t\tRe X1\t\tIm X1\t\tRe X2\t\tIm X2\t\tRe X3\t\tIm X3\n'
-	#	WriteFile(X1_A,X2_A,X3_A,WriteMax,WriteStep,header,filename)
+	#	WriteFileX([X1_A,X2_A,X3_A],WriteMax,WriteStep,header,filename)
 	if WriteGF:
 		filename = 'gf_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'.dat'
 		header = '# E\t\tRe GF0\t\tIm GF0\t\tRe SE\t\tIm SE\t\tRe GF\t\tIm GF'
-		WriteFile(GFtherm_A,SE_A,GFint_A,WriteMax,WriteStep,header,filename)
+		WriteFileX([GFtherm_A,SE_A,GFint_A],WriteMax,WriteStep,header,filename)
 	if WriteVertex:
 		filename = 'vertex_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'.dat'
 		header = '# E\t\tRe Bubble\t\tIm Bubble\t\tRe K\t\tIm K\t\tRe SD-kernel\t\tIm SD-kernel'
-		WriteFile(Bubble_A,K_A,ChiGamma_A,WriteMax,WriteStep,header,filename)
+		WriteFileX([Bubble_A,K_A,ChiGamma_A],WriteMax,WriteStep,header,filename)
 	if WriteNpz:
 		sp.savez_compressed('siam',En_A = En_A, GFzero_A = GFzero_A, GFint_A = GFint_A, SE_A = SE_A, Lambda = Lambda, SigmaT = SigmaT)
 		if chat: print('# File siam.npz written.')
