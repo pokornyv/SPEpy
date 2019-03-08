@@ -44,7 +44,7 @@ if chat:
 	print('# python version: '+str(ver)+', SciPy version: '+str(sp.version.version))
 	print('# energy axis: [{0: .5f} ..{1: .5f}], step = {2: .5f}, length = {3: 3d}'\
      .format(En_A[0],En_A[-1],dE,len(En_A)))
-	print('# U = {0: .4f}, Delta = {1: .4f}, ed = {2: .4f}, h = {3: .4f}, T = {4: .4f}'\
+	print('# U = {0: .5f}, Delta = {1: .5f}, ed = {2: .5f}, h = {3: .5f}, T = {4: .5f}'\
 	.format(U,Delta,ed,h,T))
 	print('# Kondo temperature from Bethe ansatz: Tk ~{0: .5f}'\
 	.format(float(KondoTemperature(U,Delta,ed))))
@@ -98,6 +98,8 @@ if not Lin:
 	Bubble_A = TwoParticleBubble(GFzero_A,GFzero_A,'eh')
 	Lambda0 = CalculateLambda(Bubble_A,GFzero_A,GFzero_A)
 	if chat: print('# - Lambda0 = {0: .8f}'.format(Lambda0))
+else:
+	if chat: print('# Initial guess for Lambda: L(++) = {0: .6f}, L(+-) = {1: .6f}'.format(LppIn,LmpIn))
 	
 ########################################################
 ## calculate filling of the thermodynamic Green function
@@ -109,19 +111,19 @@ k = 1
 while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	[nTupOld,nTdnOld] = [nTup,nTdn]
 	if T == 0.0:
-		nup_dens = lambda x: DensityLambda(ed+U/2.0*(x+nTdn-1.0)) - x
-		ndn_dens = lambda x: DensityLambda(ed+U/2.0*(nTup+x-1.0)) - x
+		nup_dens = lambda x: DensityLambda(ed+U/2.0*(x+nTdn-1.0)-h) - x
+		ndn_dens = lambda x: DensityLambda(ed+U/2.0*(nTup+x-1.0)+h) - x
 	else:
-		nup_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(x+nTdn-1.0))) - x
-		ndn_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(nTup+x-1.0))) - x
+		nup_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(x+nTdn-1.0)+h)) - x
+		ndn_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(nTup+x-1.0)-h)) - x
 	nTup = brentq(nup_dens,0.0,1.0,xtol = epsn)
 	nTdn = brentq(ndn_dens,0.0,1.0,xtol = epsn)
 	if chat: print('# - - {0: 3d}:   nUp: {1: .8f}, nDn: {2: .8f}'.format(k,nTup,nTdn))
 	k += 1
 
 ## fill the Green functions
-GFTup_A = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0))
-GFTdn_A = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0))
+GFTup_A = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0)+h)
+GFTdn_A = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0)-h)
 ## write non-interacting GF to a file, development only
 #WriteFileX([GFTup_A,GFTdn_A],WriteMax,WriteStep,parline,'GFTzero.dat')
 
@@ -143,13 +145,11 @@ else:
 
 [nTupOld,nTdnOld] = [1e8,1e8]
 [Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,0.0]
-[Sigma0old,Sigma1old] = [1e8,1e8]
 
 k = 1
 while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	if chat: print('#\n# Iteration {0: 3d}'.format(k))
 	[nTupOld,nTdnOld] = [nTup,nTdn]
-	[Sigma0old,Sigma1old] = [Sigma0,Sigma1]
 	## Lambda vertex
 	[LambdaPP,LambdaPM] = CalculateLambdaD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM)
 	Kpp = KvertexD( 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
@@ -165,25 +165,19 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	IFDmp = ImBDDFDD(-1,GFTup_A,GFTdn_A,0)
 	if chat: print('# - aux. integrals:     X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
 	.format(RFDpp,IFDpp,RFDmp,IFDmp))
-	## symmetric Lambda vertex
-	LambdaSymmPP = LambdaPP	
-	LambdaSymmPM = sp.real(LambdaPM)	##0.5*(LambdaPM+sp.conj(LambdaPM))
 	## HF self-energy
-	IG0 = IntGdiff(GFTup_A,GFTdn_A)
-	if chat: print('# - integral <Gup-Gdn>: {0: .8f} {1:+8f}i'.format(sp.real(IG0),sp.imag(IG0)))
-	Sigma0 = U*(nTup+nTdn-1.0)/2.0
-	Sigma1 = 0.5*(LambdaSymmPP*IG0+LambdaSymmPM*sp.conj(IG0))
-	Sigma0 = alpha*Sigma0 + (1.0-alpha)*Sigma0old
-	Sigma1 = alpha*Sigma1 + (1.0-alpha)*Sigma1old
-	## thermodynamic Green function
+	[Sigma0,Sigma1] = CalculateSigmaT(LambdaPP,LambdaPM,Sigma0,Sigma1,GFlambda,DensityLambda)
+	if chat: print('# - static self-energy: normal: {0: .8f} {1:+8f}i, anomalous: {2: .8f} {3:+8f}i'\
+	.format(sp.real(Sigma0),sp.imag(Sigma0),sp.real(Sigma1),sp.imag(Sigma1)))
 	GFTup_A = GFlambda(En_A-ed-Sigma0+(h-Sigma1))
 	GFTdn_A = GFlambda(En_A-ed-Sigma0-(h-Sigma1))
-	## filling and magnetization
+	## symmetrize the Green function if possible
 	if h == 0.0:
 		if chat: print('# - h = 0, averaging Green functions over spin to avoid numerical errors')
 		GFTup_A = sp.copy((GFTup_A+GFTdn_A)/2.0)
 		GFTdn_A = sp.copy((GFTup_A+GFTdn_A)/2.0)
 		Sigma1 = 0.0
+	## recalculate filling and magnetization
 	if any([ed!=0.0,h!=0.0]):
 		if T == 0.0:
 			nTup = DensityLambda(ed+Sigma0-(h-Sigma1))
@@ -198,8 +192,12 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 		print('# Warning: non-zero imaginary part of nT, up: {0: .8f}, dn: {1: .8f}.'\
 		.format(sp.imag(nTup),sp.imag(nTdn)))
 	[nTup,nTdn] = [sp.real(nTup),sp.real(nTdn)]
-	if chat: print('# - static self-energy: normal: {0: .8f} {1:+8f}i, anomalous: {2: .8f} {3:+8f}i'.\
-	format(sp.real(Sigma0),sp.imag(Sigma0),sp.real(Sigma1),sp.imag(Sigma1)))
+	## print integrals for control 
+	IG0p = IntGdiff(GFTup_A,GFTdn_A)
+	IG0m = IntGdiff(sp.conj(GFTup_A),sp.conj(GFTdn_A))
+	if chat: print('# - integrals <Gup-Gdn>: I(+) {0: .8f} {1:+8f}i, I(-) {2: .8f} {3:+8f}i'\
+	.format(sp.real(IG0p),sp.imag(IG0p),sp.real(IG0m),sp.imag(IG0m)))
+	## print putput for given iteration
 	if chat: 
 		print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
 		print('# - nT = {0: .8f}, mT = {1: .8f}'.format(nTup+nTdn,nTup-nTdn))
@@ -216,6 +214,10 @@ Dzero = Det_A[int((len(En_A)-1)/2)]
 if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
 ## write the determinant to a file, for development only
 #WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
+
+#print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}\t{9: .8f}'\
+#.format(h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),sp.real(Dzero),nTup,nTdn,nTup+nTdn,nTup-nTdn))
+#exit()
 
 ## check the zero of the determinant, development only
 #GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A,1,1)
@@ -277,12 +279,12 @@ if any([HWHMup == 0.0,HWHMdn == 0.0]) and chat:
 	print('# - Warning: HWHM cannot be calculated, setting it to zero.')
 elif any([HWHMup < dE,HWHMdn < dE]): 
 	print('# - Warning: HWHM smaller than energy resolution.')
-if chat: print('# - spin-up: DOS[0] = {0: .6f}, maximum of DoS: {1: .6f} at w = {2: .6f}'\
+if chat: print('# - spin-up: DOS[0] = {0: .8f}, maximum of DoS: {1: .8f} at w = {2: .8f}'\
 .format(float(DOSFup),float(DOSmaxUp),float(wmaxUp)))
 if h!=0.0 and chat:
-	print('# - spin-dn: DOS[0] = {0: .6f}, maximum of DoS: {1: .6f} at w = {2: .6f}'\
+	print('# - spin-dn: DOS[0] = {0: .8f}, maximum of DoS: {1: .8f} at w = {2: .8f}'\
 	.format(float(DOSFdn),float(DOSmaxDn),float(wmaxDn)))
-if chat: print('# - HWHM: spin-up: {0: .6f}, spin-dn: {1: .6f}'.format(float(HWHMup),float(HWHMdn)))
+if chat: print('# - HWHM: spin-up: {0: .8f}, spin-dn: {1: .8f}'.format(float(HWHMup),float(HWHMdn)))
 
 ###########################################################
 ## write the output files #################################
@@ -294,7 +296,7 @@ if WriteGF:
 		filename = 'gfDn_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
 		WriteFileX([GFTdn_A,SigmaDn_A,GFintDn_A],WriteMax,WriteStep,header,filename)
 
-print('{0: .4f}\t{1: .4f}\t{2: .5f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
+print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
 .format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Zup,DOSFup,sp.real(Dzero)))
 
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}'\

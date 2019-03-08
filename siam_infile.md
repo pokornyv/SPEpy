@@ -12,14 +12,15 @@ dE           : 1e-4
 PrecLambda   : 1e-6
 PrecSigmaT   : 1e-4
 PrecN        : 1e-4
+alpha        : 0.5
+
 ;SCsolver     : 'fixed'
 ;SCsolver     : 'iter'
 SCsolver     : 'root'
-alpha        : 0.5
 
 ;GFtype       : semi
-;GFtype       : gauss
 GFtype        : lor
+;GFtype       : gauss
 ;GFtype       : sc
 ;GFtype       : sq
 
@@ -32,7 +33,7 @@ WriteFileGreenF  : 1
 WriteFileVertex  : 1
 WriteDataFile    : 0
 
-WriteMax         : 10
+WriteMax         : 30
 WriteStep        : 3
 ```
   
@@ -45,9 +46,9 @@ WriteStep        : 3
 - *PrecLambda* - convergence criterium used in calculation of the vertex Lambda  
 - *PrecSigmaT* - convergence criterium used in calculation of the thermodynamic self-energy, used only in *siam_static*  
 - *PrecN* - convergence criterium used in calculation of the electron density  
-- *SCsolver* - method of solving the self-consistent equations for Lambda vertex, used only in *siam_parquet*  
 - *alpha* - mixing parameter used in calculation of the thermodynamic self-energy (*siam_static*) or 
-the Lambda vertex (*siam_parquet*), alpha=1 means no mixing  
+the Lambda vertex (*siam_parquet*, if *SCsolver* = 'iter'), alpha=1 means no mixing  
+- *SCsolver* - method of solving the self-consistent equations for Lambda vertex, used only in *siam_parquet*  
 - *GFtype* - input Green function, lor - Loretzian, semi - semielliptic, gauss - gaussian, 
 sc - simple-cubic lattice, sq - square lattice  
 - *calcSusc* - 0/1 switch whether calculate susceptibilities (it takes a lot of time), used only in *siam_static*  

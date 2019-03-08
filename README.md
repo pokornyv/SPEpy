@@ -39,7 +39,7 @@ These parameters are not necessary but they occasionaly speed up the calculation
 #### TODO list:
 - [x] Fix *RuntimeWarning: overflow encountered in exp* in `FermiDirac` and `BoseEinstein`.
 - [ ] The quasiparticle residue *Z* is not always calculated correctly due to an instability in the 
-numerical differentiation procedure.
+`KramersKronigFFT` function (see below).
 - [ ] Fix signed int overflow in `KramersKronigFFT`.
 - [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
 - [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.

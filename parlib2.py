@@ -9,7 +9,7 @@ import scipy as sp
 from scipy.integrate import simps
 from scipy.fftpack import fft,ifft
 from scipy.optimize import brentq,fixed_point,root
-from parlib import KramersKronigFFT
+from parlib import KramersKronigFFT,Filling
 from time import time
 from config_siam import *
 
@@ -144,7 +144,7 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 	global GG1_A,GG2_A,GG3_A,GG4_A,alpha
 	[LppOld,LpmOld] = [1e8,1e8]
 	if SCsolver == 'iter': [diffpp,diffpm] = [1e8,1e8]
-	## correlators not't change with Lambda iterations
+	## correlators don't change with Lambda iterations
 	t = time()
 	if chat: print('# - calculating correlators... ',end='',flush=True)
 	GG1_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1, 1)
@@ -188,16 +188,47 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 			[Lpp,Lpm] = [sol.x[0]+1.0j*sol.x[1],sol.x[2]+1.0j*sol.x[3]]
 			break ## we don't need the outer loop here
 		else:
-			print('# CalculateLambdaD: Unknown SCsolver')
+			print('# - CalculateLambdaD: Unknown SCsolver')
 			exit(1)
 		if chat: print('# - - iter. {0: 3d}: Lambda(++): {1: .8f} {2:+8f}i  Lambda(+-): {3: .8f} {4:+8f}i'\
 		.format(k,sp.real(Lpp),sp.imag(Lpp),sp.real(Lpm),sp.imag(Lpm)))
 		if k > 1000:
-			print('# CalculateLambdaD: No convergence after 1000 iterations. Exit.')
+			print('# - CalculateLambdaD: No convergence after 1000 iterations. Exit.')
 			exit(1)
 		k += 1
 		print([Lpp,Lpm])
 	return [Lpp,Lpm]
+
+
+###########################################################
+## static self-energy #####################################
+
+def VecSigmaT(Sigma0in,RSigma1in,ISigma1in,LSpp,LSpm,GFlambda,DLambda):
+	''' calculates normal and anomalous static self-energy, returns differences '''
+	Sigma1in = RSigma1in+1.0j*ISigma1in
+	Gup_A = GFlambda(En_A-ed-Sigma0in+(h-Sigma1in))
+	Gdn_A = GFlambda(En_A-ed-Sigma0in-(h-Sigma1in))
+	IG0p = IntGdiff(Gup_A,Gdn_A)
+	IG0m = IntGdiff(sp.conj(Gup_A),sp.conj(Gdn_A))
+	if T == 0.0:
+		nTup = sp.real(DLambda(ed+Sigma0in-(h-Sigma1in)))
+		nTdn = sp.real(DLambda(ed+Sigma0in+(h-Sigma1in)))
+	else:
+		nTup = Filling(Gup_A)
+		nTdn = Filling(Gdn_A)
+	Sigma0 = U*(nTup+nTdn-1.0)/2.0
+	Sigma1 = -0.5*(LSpp*IG0p-LSpm*IG0m)
+	return [Sigma0-Sigma0in,sp.real(Sigma1)-RSigma1in,sp.imag(Sigma1)-ISigma1in]
+
+
+def CalculateSigmaT(Lpp,Lpm,S0,S1,GFlambda,DLambda):
+	''' solver for the static self-energy '''
+	LSymmPP = Lpp
+	LSymmPM = sp.real(Lpm)	## 0.5*(LambdaPM+sp.conj(LambdaPM))
+	eqn = lambda x: VecSigmaT(x[0],x[1],x[2],LSymmPP,LSymmPM,GFlambda,DLambda)
+	sol = root(eqn,[S0,sp.real(S1),sp.imag(S1)],method='lm')
+	[Sigma0,Sigma1] = [sol.x[0],sol.x[1]+1.0j*sol.x[2]]
+	return [Sigma0,Sigma1]
 
 
 ###########################################################
