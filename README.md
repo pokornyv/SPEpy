@@ -10,15 +10,18 @@ square- and simple-cubic-lattice non-interacting density of states (DoS).
 
 This solver can also be used self-consistently as a solver in the DMFT loop. 
 The DMFT loop is implemented only for the Bethe lattice with semi-elliptic DoS and gives metallic 
-solutions only. This code is more a proof of concept than a real DMFT solver, and should be used as that.  
+solutions only. This code is more a proof of concept than a real DMFT solver, and should be used 
+as that.  
 
 This code is still subject to heavy development and big changes. 
 It requires deep knowledge of the method to obtain reasonable results. 
 Codes also still contain non-documented internal switches. 
-Use only as an example how to implement SPE. Code *siam_parquet.py* is yet in early stage of development.  
+Use only as an example how to implement SPE. Code *siam_parquet.py* is yet in early stage 
+of development.  
 
-Code is now tested on python 3.7 with [SciPy](https://www.scipy.org) 1.1. Compatibility with older SciPy versions
-is not guaranteed. Some parts of code use [mpmath](http://mpmath.org) library to calculate special functions 
+Code is now tested on python 3.7 with [SciPy](https://www.scipy.org) 1.1. 
+Compatibility with older SciPy versions is not guaranteed. 
+Some parts of code use [mpmath](http://mpmath.org) library to calculate special functions 
 of complex variable and to perform abitrary-precision calculations. Tested with mpmath 1.0.
 
 SPEpy is a free software distributed under the GPL license.
@@ -31,9 +34,9 @@ SPEpy is a free software distributed under the GPL license.
 - `python3 siam_parquet.py <U> <Delta> <eps> <T> <h> <LppIn> <LpmIn>`  
 - `python3 dmft_parquet.py`  
 
-where *python3* is the alias for the python 3 interpreter. Model and method parameters are declared in the
-*siam.in* and *dmft.in* files, respectively. *LppIn* and *LpmIn* are real parts of the irreducible vertex
-for which we already have results and we want to use it as the initial condition. 
+where *python3* is the alias for the python 3 interpreter. Model and method parameters are declared 
+in the *siam.in* and *dmft.in* files, respectively. *LppIn* and *LpmIn* are real parts of the 
+irreducible vertex for which we already have results and we want to use it as the initial condition. 
 These parameters are not necessary but they occasionaly speed up the calculation.
 
 #### TODO list:
@@ -46,16 +49,18 @@ These parameters are not necessary but they occasionaly speed up the calculation
 - [ ] Implement magnetic field to *siam_parquet.py*.
 - [ ] Temperature dependence in *siam_parquet.py* works only for small temperatures.
 - [ ] Update the dmft code for the new concept (needs testing, works only at half-filling).
-- [ ] Speed-up the simple-cubic/square lattice calculation by using the Hilbert transform (maybe not possible).
+- [ ] Speed-up the simple-cubic/square lattice calculation by using the Hilbert transform 
+(maybe not possible).
 
 #### List of files:
 - *parlib.py* - library of general functions and for *siam_static.py*
 - *parlib2.py* - library of functions used in *siam_parquet.py*
 - *siam_static.py* - solves the one-band single-impurity Anderson model or the Hubbard model using 
 SPE with static Lambda vertex as described in Refs. [1-3]
-- *siam_parquet.py* - solves the one-band single-impurity Anderson model using SPE with modified Lambda vertex,
-still in development
-- *dmft_parquet.py* - calculates the DMFT solution of the half-filled one-band Hubbard model on a Bethe lattice using static SPE
+- *siam_parquet.py* - solves the one-band single-impurity Anderson model using SPE with modified 
+Lambda vertex, still in development
+- *dmft_parquet.py* - calculates the DMFT solution of the half-filled one-band Hubbard model 
+on a Bethe lattice using static SPE
 - *config_siam.py* - reads input from command line and from *siam.in*, sets up basic global arrays
 - *config_dmft.py* - reads input file *dmft.in*, sets up basic global arrays
 - *siam_infile.md* - description of the *siam.in* file
@@ -64,17 +69,22 @@ still in development
 - *README.md* - this document
 
 #### Output files:
-*siam_static.py* generates two output files (see `WriteFileGreenF` and `WriteFileVertex` switches in *siam.in*). 
-File *gf_xxxx.dat* contains the real and imaginary part of the non-interacting Green function, the spectral self-energy and the
-interacting Green function. File *vertex_xxxx.dat* contains the two-particle bubble, dynamical part of the vertex *K* and the kernel
-of the Schwinger-Dyson equation. File *siam.npz* contains raw data for further processing.
+*siam_static.py* generates two output files (see `WriteFileGreenF` and `WriteFileVertex` 
+switches in *siam.in*). File *gf_xxxx.dat* contains the real and imaginary part of the 
+non-interacting Green function, the spectral self-energy and the interacting Green function. 
+File *vertex_xxxx.dat* contains the two-particle bubble, dynamical part of the vertex *K* and the 
+kernel of the Schwinger-Dyson equation. File *siam.npz* contains raw data for further processing.
 
-*siam_parquet.py* generates equivalent file named *gfyy_xxxx.dat* where *yy* = *Up* or *Dn* is the spin channel.
-For non-magnetic setup only the *Up* file is generated. `WriteFileVertex` switch in *siam.in* is dummy for this code.
+*siam_parquet.py* generates equivalent file named *gfyy_xxxx.dat* where *yy* = *Up* or *Dn* is 
+the spin channel. For non-magnetic setup only the *Up* file is generated. `WriteFileVertex` switch 
+in *siam.in* is dummy for this code. In magnetic setup, file *gfMag_xxxx.dat* is also generated. 
+It contains the Green functions and self-energies for both spin channels, useful for plotting 
+the total spectral function.
 
-*dmft_parquet.py* generates output file *gf_iterxxxx.dat* with Greens function and self-energy for every 
-iteration (see `WriteFiles` switch in *dmft.in*) and a final file *gf_Uxxxx_dmft.dat* at the end. Raw data from last iteration
-are stored in *npz* archives. The evolution of the important quantities with dmft iterations is stored in *iterations.dat*.
+*dmft_parquet.py* generates output file *gf_iterxxxx.dat* with Green function and self-energy 
+for every iteration (see `WriteFiles` switch in *dmft.in*) and a final file *gf_Uxxxx_dmft.dat* 
+at the end. Raw data from last iteration are stored in *npz* archives. The evolution of the 
+important quantities with dmft iterations is stored in *iterations.dat*.
 
 #### References:
 1. [V. Janiš, V. Pokorný, and A. Kauch, *Phys. Rev. B* **95**, 165113 (2017).](http://journals.aps.org/prb/abstract/10.1103/PhysRevB.95.045108)

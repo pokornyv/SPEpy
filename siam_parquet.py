@@ -144,7 +144,7 @@ else:
 	[LambdaPP,LambdaPM] = [Lambda0,Lambda0]
 
 [nTupOld,nTdnOld] = [1e8,1e8]
-[Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,0.0]
+[Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,U*(nTup-nTdn)/2.0]
 
 k = 1
 while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
@@ -200,7 +200,7 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	## print putput for given iteration
 	if chat: 
 		print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
-		print('# - nT = {0: .8f}, mT = {1: .8f}'.format(nTup+nTdn,nTup-nTdn))
+		print('# - ed = {0: .4f}, h = {1: .4f}:    nT = {2: .8f}, mT = {3: .8f}'.format(ed,h,nTup+nTdn,nTup-nTdn))
 		print('{0: 3d}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}'.format(k,nTup,nTdn,nTup+nTdn,nTup-nTdn))
 	k+=1
 
@@ -214,6 +214,8 @@ Dzero = Det_A[int((len(En_A)-1)/2)]
 if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
 ## write the determinant to a file, for development only
 #WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
+if chat and h==0.0:
+	print('# - thermodynamic susceptibility: {0: .8f}'.format(sp.real(SusceptibilityTherm(Dzero,GFTup_A))))
 
 #print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}\t{9: .8f}'\
 #.format(h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),sp.real(Dzero),nTup,nTdn,nTup+nTdn,nTup-nTdn))
@@ -231,18 +233,22 @@ if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.rea
 ## spectral self-energy ###################################
 if chat: print('#\n# calculating the spectral self-energy:')
 SigmaUp_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'up')
-SigmaDn_A = sp.flipud(SigmaUp_A)
-#SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'dn')
+SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'dn')
 Sigma_A = (SigmaUp_A+SigmaDn_A)/2.0
 
 ## quasiparticle weights
 [Zup,dReSEupdw] = QuasiPWeight(sp.real(SigmaUp_A))
 [Zdn,dReSEdndw] = QuasiPWeight(sp.real(SigmaDn_A))
+[Z,dReSEdw]     = QuasiPWeight(sp.real(Sigma_A))
 
-if chat: print('# - up spin: Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
-.format(float(Zup),float(dReSEupdw),float(1.0/Zup)))
-if chat and h!=0.0: print('# - dn spin: Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
-.format(float(Zdn),float(dReSEdndw),float(1.0/Zdn)))
+if chat: print('# - Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
+.format(float(Z),float(dReSEdw),float(1.0/Z)))
+
+if chat and h!=0.0: 
+	print('# - up spin: Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
+	.format(float(Zup),float(dReSEupdw),float(1.0/Zup)))
+	print('# - dn spin: Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
+	.format(float(Zdn),float(dReSEdndw),float(1.0/Zdn)))
 
 ###########################################################
 ## interacting Green function #############################
@@ -261,12 +267,13 @@ while any([sp.fabs(nUpOld-nUp) > epsn, sp.fabs(nDnOld-nDn) > epsn]):
 	if chat: print('# - - {0: 3d}:   nUp: {1: .8f}, nDn: {2: .8f}'.format(k,nUp,nDn))
 	k += 1
 
-GFintUp_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)+(h-Sigma1)-SigmaUp_A)
-GFintDn_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)-(h-Sigma1)-SigmaDn_A)
+GFintUp_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)+(h-Sigma1)-Sigma_A)
+GFintDn_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)-(h-Sigma1)-Sigma_A)
 
 [nUp,nDn] = [Filling(GFintUp_A),Filling(GFintDn_A)]
-if chat: print('# - spectral Green function filling: nUp = {0: .8f}, nDn = {1: .8f}'.format(nUp,nDn))
-if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(nUp+nDn,nUp-nDn))
+if chat: 
+	print('# - spectral Green function filling: nUp = {0: .8f}, nDn = {1: .8f}'.format(nUp,nDn))
+	print('# - ed = {0: .4f}, h = {1: .4f}:    n = {2: .8f}, m = {3: .8f}'.format(ed,h,nUp+nDn,nUp-nDn))
 
 ## DoS at Fermi energy
 DOSFup = -sp.imag(GFintUp_A[int(N/2)])/sp.pi
@@ -295,6 +302,9 @@ if WriteGF:
 	if h!=0.0:	
 		filename = 'gfDn_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
 		WriteFileX([GFTdn_A,SigmaDn_A,GFintDn_A],WriteMax,WriteStep,header,filename)
+		filename = 'gfMag_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
+		WriteFileX([GFintUp_A,GFintDn_A,SigmaUp_A,SigmaDn_A],WriteMax,WriteStep,header,filename)
+
 
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
 .format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Zup,DOSFup,sp.real(Dzero)))

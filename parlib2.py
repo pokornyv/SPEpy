@@ -254,13 +254,13 @@ def CorrelatorsSE(Gup_A,Gdn_A,i1,i2):
 	return [IGGs1_A,GGs2_A,GGs3_A]
 
 
-def Theta(Gup_A,Gdn_A,Lpp,Lmp):
+def Theta(G1_A,G2_A,Lpp,Lmp,spin):
 	''' auxiliary function to calculate spectral self-energy '''
-	GG0 = CorrelatorGGzero(Gup_A,Gdn_A,1,1)
+	GG0 = CorrelatorGGzero(G1_A,G2_A,1,1)
 	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
-	gpp = Lpp+(absC(Lpp)-absC(Lmp))*sp.conj(GG0)
-	gmp = Lmp
-	[IGGs1_A,GGs2_A,GGs3_A] = CorrelatorsSE(Gup_A,Gdn_A,1,1)
+	gmp = Lmp if spin == 'up' else sp.conj(Lmp)	## gamma(-,+)
+	gpp = Lpp+(absC(Lpp)-absC(Lmp))*sp.conj(GG0)	## gamma(+,+)
+	[IGGs1_A,GGs2_A,GGs3_A] = CorrelatorsSE(G1_A,G2_A,1,1)
 	#from parlib import WriteFileX
 	#WriteFileX([IGGs1_A,GGs2_A,GGs3_A],100,3,'','ThetaGG.dat')
 	Theta_A = gmp*IGGs1_A+gpp*GGs2_A-gmp*GGs3_A
@@ -275,11 +275,15 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
 	#GG3_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1,-1)
 	#GG4_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1,-1)
 	N = int((len(En_A)-1)/2)
-	Theta_A  = Theta(Gup_A,Gdn_A,Lpp,Lmp)
-	Det_A    = DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)
+	if spin == 'up': 
+		Theta_A = Theta(Gup_A,Gdn_A,Lpp,Lmp,spin)
+		GF_A = sp.copy(Gdn_A) 
+		Det_A = DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)
+	else: ## spin='dn'
+		Theta_A = Theta(Gdn_A,Gup_A,Lpp,Lmp,spin)
+		GF_A = sp.copy(Gup_A) 
+		Det_A = sp.flipud(sp.conj(DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)))
 	Kernel_A = U*Theta_A/Det_A
-	if spin == 'up': GF_A = sp.copy(Gdn_A) 
-	else:            GF_A = sp.copy(Gup_A) 
 	## zero-padding the arrays
 	FDex_A     = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
 	BEex_A     = sp.concatenate([BE_A[N:],sp.zeros(2*N+3),BE_A[:N]])
