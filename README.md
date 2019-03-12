@@ -41,14 +41,14 @@ These parameters are not necessary but they occasionaly speed up the calculation
 
 #### TODO list:
 - [x] Fix *RuntimeWarning: overflow encountered in exp* in `FermiDirac` and `BoseEinstein`.
-- [ ] The quasiparticle residue *Z* is not always calculated correctly due to an instability in the 
+- [x] The quasiparticle residue *Z* is not always calculated correctly due to an instability in the 
 `KramersKronigFFT` function (see below).
-- [ ] Fix signed int overflow in `KramersKronigFFT`.
-- [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
-- [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.
-- [ ] Implement magnetic field to *siam_parquet.py*.
+- [x] Fix signed int overflow in `KramersKronigFFT`.
+- [x] Implement magnetic field to *siam_parquet.py*.
 - [ ] Temperature dependence in *siam_parquet.py* works only for small temperatures.
 - [ ] Update the dmft code for the new concept (needs testing, works only at half-filling).
+- [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
+- [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.
 - [ ] Speed-up the simple-cubic/square lattice calculation by using the Hilbert transform 
 (maybe not possible).
 

@@ -152,22 +152,24 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	[nTupOld,nTdnOld] = [nTup,nTdn]
 	## Lambda vertex
 	[LambdaPP,LambdaPM] = CalculateLambdaD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM)
-	Kpp = KvertexD( 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
-	Kmp = KvertexD(-1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
-	if chat: print('# - Lambda vertex: Lambda(++): {0: .8f} {1:+8f}i  Lambda(+-): {2: .8f} {3:+8f}i'\
+	if chat: print('# - Lambda vertex:  Lambda(++): {0: .8f} {1:+8f}i  Lambda(+-): {2: .8f} {3:+8f}i'\
 	.format(sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM)))
-	if chat: print('# - K vertex:           K(++): {0: .8f} {1:+8f}i       K(-+): {2: .8f} {3:+8f}i'\
-	.format(sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
-	## check the integrals:
-	RFDpp = ReBDDFDD( 1,GFTup_A,GFTdn_A,0)
-	IFDpp = ImBDDFDD( 1,GFTup_A,GFTdn_A,0)
-	RFDmp = ReBDDFDD(-1,GFTup_A,GFTdn_A,0)
-	IFDmp = ImBDDFDD(-1,GFTup_A,GFTdn_A,0)
-	if chat: print('# - aux. integrals:     X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
-	.format(RFDpp,IFDpp,RFDmp,IFDmp))
+#	if True: ## print auxiliary functions, development only
+	if False:
+		Kpp = KvertexD( 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
+		Kmp = KvertexD(-1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
+		if chat: print('# - K vertex:            K(++): {0: .8f} {1:+8f}i       K(-+): {2: .8f} {3:+8f}i'\
+		.format(sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
+		## check the integrals:
+		RFDpp = ReBDDFDD( 1,GFTup_A,GFTdn_A,0)
+		IFDpp = ImBDDFDD( 1,GFTup_A,GFTdn_A,0)
+		RFDmp = ReBDDFDD(-1,GFTup_A,GFTdn_A,0)
+		IFDmp = ImBDDFDD(-1,GFTup_A,GFTdn_A,0)
+		if chat: print('# - aux. integrals:      X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
+		.format(RFDpp,IFDpp,RFDmp,IFDmp))
 	## HF self-energy
 	[Sigma0,Sigma1] = CalculateSigmaT(LambdaPP,LambdaPM,Sigma0,Sigma1,GFlambda,DensityLambda)
-	if chat: print('# - static self-energy: normal: {0: .8f} {1:+8f}i, anomalous: {2: .8f} {3:+8f}i'\
+	if chat: print('# - static self-energy: normal: {0: .8f} {1:+8f}i,  anomalous: {2: .8f} {3:+8f}i'\
 	.format(sp.real(Sigma0),sp.imag(Sigma0),sp.real(Sigma1),sp.imag(Sigma1)))
 	GFTup_A = GFlambda(En_A-ed-Sigma0+(h-Sigma1))
 	GFTdn_A = GFlambda(En_A-ed-Sigma0-(h-Sigma1))
@@ -192,12 +194,13 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 		print('# Warning: non-zero imaginary part of nT, up: {0: .8f}, dn: {1: .8f}.'\
 		.format(sp.imag(nTup),sp.imag(nTdn)))
 	[nTup,nTdn] = [sp.real(nTup),sp.real(nTdn)]
-	## print integrals for control 
-	IG0p = IntGdiff(GFTup_A,GFTdn_A)
-	IG0m = IntGdiff(sp.conj(GFTup_A),sp.conj(GFTdn_A))
-	if chat: print('# - integrals <Gup-Gdn>: I(+) {0: .8f} {1:+8f}i, I(-) {2: .8f} {3:+8f}i'\
-	.format(sp.real(IG0p),sp.imag(IG0p),sp.real(IG0m),sp.imag(IG0m)))
-	## print putput for given iteration
+	if T > 0.0:
+		## print integrals for control 
+		IG0p = IntGdiff(GFTup_A,GFTdn_A)
+		IG0m = IntGdiff(sp.conj(GFTup_A),sp.conj(GFTdn_A))
+		if chat: print('# - integrals <Gup-Gdn>: I(+) {0: .8f} {1:+8f}i, I(-) {2: .8f} {3:+8f}i'\
+		.format(sp.real(IG0p),sp.imag(IG0p),sp.real(IG0m),sp.imag(IG0m)))
+	## print output for given iteration
 	if chat: 
 		print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
 		print('# - ed = {0: .4f}, h = {1: .4f}:    nT = {2: .8f}, mT = {3: .8f}'.format(ed,h,nTup+nTdn,nTup-nTdn))
@@ -214,12 +217,11 @@ Dzero = Det_A[int((len(En_A)-1)/2)]
 if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
 ## write the determinant to a file, for development only
 #WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
-if chat and h==0.0:
-	print('# - thermodynamic susceptibility: {0: .8f}'.format(sp.real(SusceptibilityTherm(Dzero,GFTup_A))))
-
-#print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}\t{9: .8f}'\
-#.format(h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),sp.real(Dzero),nTup,nTdn,nTup+nTdn,nTup-nTdn))
-#exit()
+if h==0.0:	
+	ChiT = sp.real(SusceptibilityTherm(Dzero,GFTup_A))
+	if chat: print('# - thermodynamic susceptibility: {0: .8f}'.format(ChiT))
+else:
+	ChiT = 0.0
 
 ## check the zero of the determinant, development only
 #GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A,1,1)
@@ -232,8 +234,8 @@ if chat and h==0.0:
 ###########################################################
 ## spectral self-energy ###################################
 if chat: print('#\n# calculating the spectral self-energy:')
-SigmaUp_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'up')
-SigmaDn_A = SelfEnergyD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'dn')
+SigmaUp_A = SelfEnergyD2(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'up')
+SigmaDn_A = SelfEnergyD2(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'dn')
 Sigma_A = (SigmaUp_A+SigmaDn_A)/2.0
 
 ## quasiparticle weights
@@ -280,7 +282,7 @@ DOSFup = -sp.imag(GFintUp_A[int(N/2)])/sp.pi
 DOSFdn = -sp.imag(GFintDn_A[int(N/2)])/sp.pi
 
 ## HWHM of the spectral function
-[HWHMup,DOSmaxUp,wmaxUp] = CalculateHWHM(GFintUp_A)
+[HWHMup,DOSmaxUp,wmaxUp] = CalculateHWHM(GFintUp_A) 
 [HWHMdn,DOSmaxDn,wmaxDn] = CalculateHWHM(GFintDn_A)
 if any([HWHMup == 0.0,HWHMdn == 0.0]) and chat: 
 	print('# - Warning: HWHM cannot be calculated, setting it to zero.')
@@ -305,12 +307,13 @@ if WriteGF:
 		filename = 'gfMag_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
 		WriteFileX([GFintUp_A,GFintDn_A,SigmaUp_A,SigmaDn_A],WriteMax,WriteStep,header,filename)
 
-
+## write data to standard output
+## use awk 'NR%2==0', awk 'NR%2==1' to separate the output into two blocks
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
-.format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Zup,DOSFup,sp.real(Dzero)))
+.format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Z,DOSFup,sp.real(Dzero)))
 
-print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}'\
-.format(U,ed,T,h,float(nTup),float(nTdn),float(nUp),float(nDn)))
+print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}'\
+.format(U,ed,T,h,nTup,nTdn,nUp,nDn,ChiT))
 
 if chat: print('# '+argv[0]+' DONE after {0: .2f} seconds.'.format(float(time()-t)))
 

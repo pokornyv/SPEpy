@@ -208,16 +208,17 @@ def VecSigmaT(Sigma0in,RSigma1in,ISigma1in,LSpp,LSpm,GFlambda,DLambda):
 	Sigma1in = RSigma1in+1.0j*ISigma1in
 	Gup_A = GFlambda(En_A-ed-Sigma0in+(h-Sigma1in))
 	Gdn_A = GFlambda(En_A-ed-Sigma0in-(h-Sigma1in))
-	IG0p = IntGdiff(Gup_A,Gdn_A)
-	IG0m = IntGdiff(sp.conj(Gup_A),sp.conj(Gdn_A))
 	if T == 0.0:
 		nTup = sp.real(DLambda(ed+Sigma0in-(h-Sigma1in)))
 		nTdn = sp.real(DLambda(ed+Sigma0in+(h-Sigma1in)))
+		Sigma1 = -0.5*LSpp*(nTup-nTdn)
 	else:
 		nTup = Filling(Gup_A)
 		nTdn = Filling(Gdn_A)
+		IG0p = IntGdiff(Gup_A,Gdn_A)
+		IG0m = IntGdiff(sp.conj(Gup_A),sp.conj(Gdn_A))
+		Sigma1 = -0.5*(LSpp*IG0p-LSpm*IG0m)
 	Sigma0 = U*(nTup+nTdn-1.0)/2.0
-	Sigma1 = -0.5*(LSpp*IG0p-LSpm*IG0m)
 	return [Sigma0-Sigma0in,sp.real(Sigma1)-RSigma1in,sp.imag(Sigma1)-ISigma1in]
 
 
@@ -268,7 +269,7 @@ def Theta(G1_A,G2_A,Lpp,Lmp,spin):
 
 
 def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
-	''' dynamic self-energy for spin-up '''
+	''' dynamic self-energy, uses Kramers-Kronig relations to calculate the real part '''
 	global GG1_A,GG2_A,GG3_A,GG4_A
 	#GG1_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1, 1)
 	#GG2_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1, 1)
@@ -296,6 +297,32 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
 	ImSE_A     = sp.concatenate([ImSE_A[3*N+4:],ImSE_A[:N+1]])
 	Sigma_A    = KramersKronigFFT(ImSE_A) + 1.0j*ImSE_A
 	return Sigma_A
+
+
+def SelfEnergyD2(Gup_A,Gdn_A,Lpp,Lmp,spin):
+	''' dynamic self-energy, calculates the complex function from FFT '''
+	global GG1_A,GG2_A,GG3_A,GG4_A
+	N = int((len(En_A)-1)/2)
+	if spin == 'up': 
+		Theta_A = Theta(Gup_A,Gdn_A,Lpp,Lmp,spin)
+		GF_A = sp.copy(Gdn_A) 
+		Det_A = DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)
+	else: ## spin='dn'
+		Theta_A = Theta(Gdn_A,Gup_A,Lpp,Lmp,spin)
+		GF_A = sp.copy(Gup_A) 
+		Det_A = sp.flipud(sp.conj(DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)))
+	Kernel_A = U*Theta_A/Det_A
+	## zero-padding the arrays
+	FDex_A     = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
+	BEex_A     = sp.concatenate([BE_A[N:],sp.zeros(2*N+3),BE_A[:N]])
+	GFex_A     = sp.concatenate([GF_A[N:],sp.zeros(2*N+3),GF_A[:N]])
+	Kernelex_A = sp.concatenate([Kernel_A[N:],sp.zeros(2*N+3),Kernel_A[:N]])
+	## performing the convolution
+	ftSE1_A  = -sp.conj(fft(BEex_A*sp.imag(Kernelex_A)))*fft(GFex_A)*dE
+	ftSE2_A  = +fft(FDex_A*sp.imag(GFex_A))*sp.conj(fft(Kernelex_A))*dE
+	SE_A     = ifft(ftSE1_A+ftSE2_A)/sp.pi
+	SE_A     = sp.concatenate([SE_A[3*N+4:],SE_A[:N+1]])
+	return SE_A
 
 
 ## parlib2.py end ###
