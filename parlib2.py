@@ -20,13 +20,16 @@ absC = lambda z: sp.real(z)**2+sp.imag(z)**2
 
 def DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A):
 	''' determinant '''
-	Det_A = 1.0+GG1_A*Lpp-(GG2_A-GG3_A)*Lpm-GG4_A*sp.conj(Lpp)-GG1_A*GG4_A*(absC(Lpp)-absC(Lpm))
+	D0 = 1.0+GG1_A*Lpp-(GG2_A-GG3_A)*Lpm-GG4_A*sp.conj(Lpp) ## zero-T part
+	DT = GG1_A*GG4_A*(absC(Lpp)-absC(Lpm)) ## thermal part
+	Det_A = D0 + DT
+	#print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .8f}\t{5: .8f}'\
+	#.format(U,ed,T,h,sp.real(D0[Nhalf]),sp.real(DT[Nhalf])))
 	return Det_A
 
 
 def ReBDDFDD(i1,Gup_A,Gdn_A,printint):
 	''' function to calculate the sum of real parts of FD and BD integrals '''
-	N = int((len(En_A)-1)/2)
 	if i1 == 1: 
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(Gdn_A))
 	elif i1 == -1:
@@ -35,7 +38,7 @@ def ReBDDFDD(i1,Gup_A,Gdn_A,printint):
 	## here we multiply big and small numbers for energies close to zero
 	#RBF1_A    = sp.exp(sp.log(FB_A)+sp.log(Int1_A))
 	RBF1_A    =  FB_A*Int1_A
-	RBF1_A[N] =  (RBF1_A[N-1] + RBF1_A[N+1])/2.0
+	RBF1_A[Nhalf] =  (RBF1_A[Nhalf-1] + RBF1_A[Nhalf+1])/2.0
 	RBF2_A    = -FD_A*Int2_A
 	TailL2    = -0.5*RBF2_A[0]*En_A[0] ## leading-order, 1/x**3 tail correction to Int2_A
 	RBF       =  (simps(RBF1_A+RBF2_A,En_A)+TailL2)/sp.pi
@@ -64,13 +67,11 @@ def ImBDDFDD(i1,Gup_A,Gdn_A,printint):
 ## correlators of Green functions #########################
 
 def CorrelatorGG(G1_A,G2_A,En_A,i1,i2):
-	''' <G1(x+i10)G2(x+w+i20)> 
-     i1 and i2 are imaginary parts of arguments '''
-	N = int((len(En_A)-1)/2)
+	''' <G1(x+i10)G2(x+w+i20)>, i1 and i2 are imaginary parts of arguments '''
 	## zero-padding the arrays, G1 and G2 are complex functions
-	FDex_A = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
-	G1ex_A = sp.concatenate([G1_A[N:],sp.zeros(2*N+3),G1_A[:N]])
-	G2ex_A = sp.concatenate([G2_A[N:],sp.zeros(2*N+3),G2_A[:N]])
+	FDex_A = sp.concatenate([FD_A[Nhalf:],sp.zeros(2*Nhalf+3),FD_A[:Nhalf]])
+	G1ex_A = sp.concatenate([G1_A[Nhalf:],sp.zeros(2*Nhalf+3),G1_A[:Nhalf]])
+	G2ex_A = sp.concatenate([G2_A[Nhalf:],sp.zeros(2*Nhalf+3),G2_A[:Nhalf]])
 	if i1*i2 > 0: G1ex_A = sp.conj(G1ex_A)
 	ftF1_A = fft(FDex_A*G1ex_A)
 	ftF2_A = fft(G2ex_A)
@@ -78,7 +79,7 @@ def CorrelatorGG(G1_A,G2_A,En_A,i1,i2):
 	else:      ftF2_A = sp.conj(ftF2_A)
 	GG_A = ifft(ftF1_A*ftF2_A*dE)
 	## undo the zero padding
-	GG_A = sp.concatenate([GG_A[3*N+4:],GG_A[:N+1]])
+	GG_A = sp.concatenate([GG_A[3*Nhalf+4:],GG_A[:Nhalf+1]])
 	TailL = -sp.real(G1_A)[0]*sp.real(G2_A)[0]*En_A[0] ## leading tail correction
 	return -(GG_A+TailL)/(2.0j*sp.pi)
 
@@ -101,6 +102,14 @@ def IntGdiff(Gup_A,Gdn_A):
 	TailL = 0.0	## tails cancel out in the difference
 	TailR = 0.0
 	return -(Int+TailL+TailR)/(2.0j*sp.pi)
+
+
+def SusceptibilitySpecD(L,chiT,GFint_A):
+	''' susceptibility '''
+	Int = simps(FD_A*sp.imag(GFint_A**2),En_A)/sp.pi
+	## what about tail???
+	print(Int,chiT,L)
+	return (2.0+L*chiT)*Int
 
 
 ###########################################################
@@ -152,6 +161,8 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 	GG3_A = CorrelatorGG(Gdn_A,Gup_A,En_A, 1,-1)
 	GG4_A = CorrelatorGG(Gdn_A,Gup_A,En_A,-1,-1)
 	if chat: print(' done in {0: .2f} seconds.'.format(time()-t))
+	#print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}'\
+	#.format(U,ed,T,h,sp.real(GG1_A[Nhalf]),sp.imag(GG2_A[Nhalf]),sp.imag(GG3_A[Nhalf]),sp.real(GG4_A[Nhalf])))
 	#Np = int((len(En_A)-1)/2)
 	#print('# corr. GG0 {0: .8f} {1:+8f}i'.format(sp.real(GG2_A[Np]),sp.imag(GG2_A[Np])))
 	#print(CorrelatorGGzero(Gup_A,Gdn_A,-1,1))
@@ -237,11 +248,10 @@ def CalculateSigmaT(Lpp,Lpm,S0,S1,GFlambda,DLambda):
 
 def CorrelatorsSE(Gup_A,Gdn_A,i1,i2):
 	''' correlators to Theta function, updated '''
-	N = int((len(En_A)-1)/2)
 	## zero-padding the arrays, G1 and G2 are complex functions
-	FDex_A   = sp.concatenate([FD_A[N:], sp.zeros(2*N+3), FD_A[:N]])
-	Fup_A    = sp.concatenate([Gup_A[N:],sp.zeros(2*N+3),Gup_A[:N]])
-	Fdn_A    = sp.concatenate([Gdn_A[N:],sp.zeros(2*N+3),Gdn_A[:N]])
+	FDex_A   = sp.concatenate([FD_A[Nhalf:], sp.zeros(2*Nhalf+3), FD_A[:Nhalf]])
+	Fup_A    = sp.concatenate([Gup_A[Nhalf:],sp.zeros(2*Nhalf+3),Gup_A[:Nhalf]])
+	Fdn_A    = sp.concatenate([Gdn_A[Nhalf:],sp.zeros(2*Nhalf+3),Gdn_A[:Nhalf]])
 	ftIGG1_A = fft(FDex_A*sp.imag(Fdn_A))*sp.conj(fft(Fup_A))*dE
 	ftGG2_A  = sp.conj(fft(FDex_A*sp.conj(Fup_A)))*fft(Fdn_A)*dE
 	ftGG3_A  = sp.conj(fft(FDex_A*Fup_A))*fft(Fdn_A)*dE
@@ -249,9 +259,9 @@ def CorrelatorsSE(Gup_A,Gdn_A,i1,i2):
 	GGs2_A   = -ifft(ftGG2_A)/(2.0j*sp.pi)
 	GGs3_A   = -ifft(ftGG3_A)/(2.0j*sp.pi)
 	## undo the zero padding
-	IGGs1_A = sp.concatenate([IGGs1_A[3*N+4:],IGGs1_A[:N+1]])
-	GGs2_A  = sp.concatenate([ GGs2_A[3*N+4:], GGs2_A[:N+1]])
-	GGs3_A  = sp.concatenate([ GGs3_A[3*N+4:], GGs3_A[:N+1]])
+	IGGs1_A = sp.concatenate([IGGs1_A[3*Nhalf+4:],IGGs1_A[:Nhalf+1]])
+	GGs2_A  = sp.concatenate([ GGs2_A[3*Nhalf+4:], GGs2_A[:Nhalf+1]])
+	GGs3_A  = sp.concatenate([ GGs3_A[3*Nhalf+4:], GGs3_A[:Nhalf+1]])
 	return [IGGs1_A,GGs2_A,GGs3_A]
 
 
@@ -275,7 +285,6 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
 	#GG2_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1, 1)
 	#GG3_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1,-1)
 	#GG4_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1,-1)
-	N = int((len(En_A)-1)/2)
 	if spin == 'up': 
 		Theta_A = Theta(Gup_A,Gdn_A,Lpp,Lmp,spin)
 		GF_A = sp.copy(Gdn_A) 
@@ -286,15 +295,15 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
 		Det_A = sp.flipud(sp.conj(DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)))
 	Kernel_A = U*Theta_A/Det_A
 	## zero-padding the arrays
-	FDex_A     = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
-	BEex_A     = sp.concatenate([BE_A[N:],sp.zeros(2*N+3),BE_A[:N]])
-	ImGF_A     = sp.concatenate([sp.imag(GF_A[N:]),sp.zeros(2*N+3),sp.imag(GF_A[:N])])
-	ImKernel_A = sp.concatenate([sp.imag(Kernel_A[N:]),sp.zeros(2*N+3),sp.imag(Kernel_A[:N])])
+	FDex_A     = sp.concatenate([FD_A[Nhalf:],sp.zeros(2*N+3),FD_A[:Nhalf]])
+	BEex_A     = sp.concatenate([BE_A[Nhalf:],sp.zeros(2*N+3),BE_A[:Nhalf]])
+	ImGF_A     = sp.concatenate([sp.imag(GF_A[Nhalf:]),sp.zeros(2*Nhalf+3),sp.imag(GF_A[:Nhalf])])
+	ImKernel_A = sp.concatenate([sp.imag(Kernel_A[Nhalf:]),sp.zeros(2*Nhalf+3),sp.imag(Kernel_A[:Nhalf])])
 	## performing the convolution
 	ftImSE1_A  = -sp.conj(fft(BEex_A*ImKernel_A))*fft(ImGF_A)*dE
 	ftImSE2_A  = -fft(FDex_A*ImGF_A)*sp.conj(fft(ImKernel_A))*dE
 	ImSE_A     = sp.real(ifft(ftImSE1_A+ftImSE2_A))/sp.pi
-	ImSE_A     = sp.concatenate([ImSE_A[3*N+4:],ImSE_A[:N+1]])
+	ImSE_A     = sp.concatenate([ImSE_A[3*Nhalf+4:],ImSE_A[:Nhalf+1]])
 	Sigma_A    = KramersKronigFFT(ImSE_A) + 1.0j*ImSE_A
 	return Sigma_A
 
@@ -302,7 +311,6 @@ def SelfEnergyD(Gup_A,Gdn_A,Lpp,Lmp,spin):
 def SelfEnergyD2(Gup_A,Gdn_A,Lpp,Lmp,spin):
 	''' dynamic self-energy, calculates the complex function from FFT '''
 	global GG1_A,GG2_A,GG3_A,GG4_A
-	N = int((len(En_A)-1)/2)
 	if spin == 'up': 
 		Theta_A = Theta(Gup_A,Gdn_A,Lpp,Lmp,spin)
 		GF_A = sp.copy(Gdn_A) 
@@ -313,15 +321,15 @@ def SelfEnergyD2(Gup_A,Gdn_A,Lpp,Lmp,spin):
 		Det_A = sp.flipud(sp.conj(DeterminantGD(Lpp,Lmp,Gup_A,Gdn_A)))
 	Kernel_A = U*Theta_A/Det_A
 	## zero-padding the arrays
-	FDex_A     = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
-	BEex_A     = sp.concatenate([BE_A[N:],sp.zeros(2*N+3),BE_A[:N]])
-	GFex_A     = sp.concatenate([GF_A[N:],sp.zeros(2*N+3),GF_A[:N]])
-	Kernelex_A = sp.concatenate([Kernel_A[N:],sp.zeros(2*N+3),Kernel_A[:N]])
+	FDex_A     = sp.concatenate([FD_A[Nhalf:],sp.zeros(2*Nhalf+3),FD_A[:Nhalf]])
+	BEex_A     = sp.concatenate([BE_A[Nhalf:],sp.zeros(2*Nhalf+3),BE_A[:Nhalf]])
+	GFex_A     = sp.concatenate([GF_A[Nhalf:],sp.zeros(2*Nhalf+3),GF_A[:Nhalf]])
+	Kernelex_A = sp.concatenate([Kernel_A[Nhalf:],sp.zeros(2*Nhalf+3),Kernel_A[:Nhalf]])
 	## performing the convolution
 	ftSE1_A  = -sp.conj(fft(BEex_A*sp.imag(Kernelex_A)))*fft(GFex_A)*dE
 	ftSE2_A  = +fft(FDex_A*sp.imag(GFex_A))*sp.conj(fft(Kernelex_A))*dE
 	SE_A     = ifft(ftSE1_A+ftSE2_A)/sp.pi
-	SE_A     = sp.concatenate([SE_A[3*N+4:],SE_A[:N+1]])
+	SE_A     = sp.concatenate([SE_A[3*Nhalf+4:],SE_A[:Nhalf+1]])
 	return SE_A
 
 

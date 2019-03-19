@@ -154,8 +154,8 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	[LambdaPP,LambdaPM] = CalculateLambdaD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM)
 	if chat: print('# - Lambda vertex:  Lambda(++): {0: .8f} {1:+8f}i  Lambda(+-): {2: .8f} {3:+8f}i'\
 	.format(sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM)))
-#	if True: ## print auxiliary functions, development only
-	if False:
+	if True: ## print auxiliary functions, development only
+#	if False:
 		Kpp = KvertexD( 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
 		Kmp = KvertexD(-1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
 		if chat: print('# - K vertex:            K(++): {0: .8f} {1:+8f}i       K(-+): {2: .8f} {3:+8f}i'\
@@ -217,11 +217,6 @@ Dzero = Det_A[int((len(En_A)-1)/2)]
 if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
 ## write the determinant to a file, for development only
 #WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
-if h==0.0:	
-	ChiT = sp.real(SusceptibilityTherm(Dzero,GFTup_A))
-	if chat: print('# - thermodynamic susceptibility: {0: .8f}'.format(ChiT))
-else:
-	ChiT = 0.0
 
 ## check the zero of the determinant, development only
 #GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A,1,1)
@@ -229,7 +224,7 @@ else:
 #print("# - check D(0): {0: .8f} {1:+8f}i".format(sp.real(CDD),sp.imag(CDD)))
 
 #print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}\t{9: .8f}'\
-#.format(U,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp),sp.real(Dzero)))
+#.format(T,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp),sp.real(Dzero)))
 
 ###########################################################
 ## spectral self-energy ###################################
@@ -295,6 +290,15 @@ if h!=0.0 and chat:
 	.format(float(DOSFdn),float(DOSmaxDn),float(wmaxDn)))
 if chat: print('# - HWHM: spin-up: {0: .8f}, spin-dn: {1: .8f}'.format(float(HWHMup),float(HWHMdn)))
 
+## zero-field susceptibility
+if h==0.0:	
+	ChiT = sp.real(SusceptibilityTherm(Dzero,GFTup_A))
+	ChiS = sp.real(SusceptibilitySpecD(LambdaPP,ChiT,GFintUp_A))
+	if chat: print('# - thermodynamic susceptibility: {0: .8f}'.format(ChiT))
+	if chat: print('# -      spectral susceptibility: {0: .8f}'.format(ChiS))
+else:
+	ChiS = ChiT = 0.0
+
 ###########################################################
 ## write the output files #################################
 if WriteGF:
@@ -312,8 +316,8 @@ if WriteGF:
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
 .format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Z,DOSFup,sp.real(Dzero)))
 
-print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}'\
-.format(U,ed,T,h,nTup,nTdn,nUp,nDn,ChiT))
+print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}'\
+.format(U,ed,T,h,nTup,nTdn,nUp,nDn,ChiT,ChiS))
 
 if chat: print('# '+argv[0]+' DONE after {0: .2f} seconds.'.format(float(time()-t)))
 

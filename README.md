@@ -44,8 +44,8 @@ These parameters are not necessary but they occasionaly speed up the calculation
 - [x] The quasiparticle residue *Z* is not always calculated correctly due to an instability in the 
 `KramersKronigFFT` function (see below).
 - [x] Fix signed int overflow in `KramersKronigFFT`.
-- [x] Implement magnetic field to *siam_parquet.py*.
-- [ ] Temperature dependence in *siam_parquet.py* works only for small temperatures.
+- [x] Implement magnetic field effects to *siam_parquet.py*.
+- [ ] Temperature dependence in *siam_parquet.py* is not implemented correctly.
 - [ ] Update the dmft code for the new concept (needs testing, works only at half-filling).
 - [ ] Implement cubic lattice DoS for future **k**-dependent calculations to *siam_parquet.py*.
 - [ ] Implement square lattice DoS for *d*-wave ordering calculations to *siam_parquet.py*.

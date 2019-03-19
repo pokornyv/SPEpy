@@ -116,6 +116,8 @@ N = 2**NE-1
 dE_dec = int(-sp.log10(dE))
 En_A = FillEnergies(dE,N)
 
+Nhalf = int((len(En_A)-1)/2)	## zero on the energy axis
+
 ###########################################################
 ## particle distributions #################################
 

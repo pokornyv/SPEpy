@@ -305,6 +305,7 @@ def XIntegralsFFT(GF_A,Bubble_A,Lambda,BubZero):
 	N = int((len(En_A)-1)/2)
 	Kappa_A  = TwoParticleBubble(GF_A,GF_A**2,'eh')
 	Bubble_A = TwoParticleBubble(GF_A,GF_A,'eh')
+	#print(Kappa_A[N],Bubble_A[N])
 	V_A   = 1.0/(1.0+Lambda*Bubble_A)
 	KV_A  = Lambda*Kappa_A*V_A**2
 	KmV_A = Lambda*sp.flipud(sp.conj(Kappa_A))*V_A**2
