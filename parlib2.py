@@ -28,11 +28,11 @@ def DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A):
 	return Det_A
 
 
-def ReBDDFDD(i1,Gup_A,Gdn_A,printint):
+def ReBDDFDD(i,Gup_A,Gdn_A,printint):
 	''' function to calculate the sum of real parts of FD and BD integrals '''
-	if i1 == 1: 
+	if i == 1: 
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(Gdn_A))
-	elif i1 == -1:
+	elif i == -1:
 		Int1_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.real(Gup_A*sp.flipud(sp.conj(Gdn_A)))
 	Int2_A = sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A))/sp.flipud(sp.conj(Det_A)))
 	## here we multiply big and small numbers for energies close to zero
@@ -42,24 +42,27 @@ def ReBDDFDD(i1,Gup_A,Gdn_A,printint):
 	RBF2_A    = -FD_A*Int2_A
 	TailL2    = -0.5*RBF2_A[0]*En_A[0] ## leading-order, 1/x**3 tail correction to Int2_A
 	RBF       =  (simps(RBF1_A+RBF2_A,En_A)+TailL2)/sp.pi
-	#print(' Re(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(RBF),i1))
+	#print(' Re(BDD+FDD): {0: .8f} ({1: 2d})'.format(float(RBF),i))
 	if printint:
 		from parlib import WriteFileX
-		WriteFileX([Int1_A,Int2_A,RBF1_A,RBF2_A],100.0,4,'','RBF'+str(i1)+'.dat')
+		WriteFileX([Int1_A,Int2_A,RBF1_A,RBF2_A],100.0,4,'','RBF'+str(i)+'.dat')
+	#if printint: print('{0: .5f}\t{1: .8f}\t{2: .8f}\t'\
+	#.format(T,simps(RBF1_A,En_A)/sp.pi,(simps(RBF2_A,En_A)+TailL2)/sp.pi),end='',flush=True)
 	return RBF
 
 
-def ImBDDFDD(i1,Gup_A,Gdn_A,printint):
+def ImBDDFDD(i,Gup_A,Gdn_A,printint):
 	''' function to calculate the sum of imaginary parts of FD and BD integrals '''
-	if i1 == 1:
+	if i == 1:
 		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(Gdn_A))
-	elif i1 == -1:
+	elif i == -1:
 		Int_A = sp.imag(1.0/sp.flipud(sp.conj(Det_A)))*sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A)))
 	IBF = simps(FB_A*Int_A,En_A)/sp.pi
-	#print(' Im(BDD+FDD): {0: .8f} ({1: 2d},{2: 2d})'.format(float(IBF),i1,i2))
+	#print(' Im(BDD+FDD): {0: .8f} ({1: 2d})'.format(float(IBF),i))
 	if printint:
 		from parlib import WriteFileX
-		WriteFileX([Int_A,FB_A*Int_A],1.0,4,'','IBF'+str(i1)+'.dat')
+		WriteFileX([Int_A,FB_A*Int_A],1.0,4,'','IBF'+str(i)+'.dat')
+	#if printint: print('{0: .8f}'.format(IBF))
 	return IBF
 
 
@@ -108,18 +111,17 @@ def SusceptibilitySpecD(L,chiT,GFint_A):
 	''' susceptibility '''
 	Int = simps(FD_A*sp.imag(GFint_A**2),En_A)/sp.pi
 	## what about tail???
-	print(Int,chiT,L)
 	return (2.0+L*chiT)*Int
 
 
 ###########################################################
 ## two-particle vertex ####################################
 
-def KvertexD(i1,Lpp,Lpm,Gup_A,Gdn_A):
+def KvertexD(i,Lpp,Lpm,Gup_A,Gdn_A):
 	''' reducible K vertex Eq. (39ab) '''
 	GG = CorrelatorGGzero(Gdn_A,Gup_A,1,1)
-	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG0),sp.imag(GG)))
-	if i1 == 1: ## K(+,+)
+	#print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG),sp.imag(GG)))
+	if i == 1: ## K(+,+)
 		K = -Lpp**2*GG-absC(Lpm)*sp.conj(GG)-Lpp*(absC(Lpp)-absC(Lpm))*absC(GG)
 	else:       ## K(-,+)
 		#K = -Lpm*(Lpp*GG+sp.conj(Lpp)*sp.conj(GG)+(absC(Lpp)-absC(Lpm))*absC(GG))
@@ -127,17 +129,17 @@ def KvertexD(i1,Lpp,Lpm,Gup_A,Gdn_A):
 	return K
 
 
-def LambdaVertexD(i2,Gup_A,Gdn_A,Lpp,Lpm):
-	''' calculates the Lambda vertex for given i1,i2 '''
+def LambdaVertexD(i,Gup_A,Gdn_A,Lpp,Lpm):
+	''' calculates the Lambda vertex for given i '''
 	global GG1_A,GG2_A,GG3_A,GG4_A,Det_A
 	Det_A  = DeterminantGD(Lpp,Lpm,Gup_A,Gdn_A)
-	K      = KvertexD(i2,Lpp,Lpm,Gup_A,Gdn_A)
-	RXD    = ReBDDFDD(i2,Gup_A,Gdn_A,0)
-	IXD    = ImBDDFDD(i2,Gup_A,Gdn_A,0)
+	K      = KvertexD(i,Lpp,Lpm,Gup_A,Gdn_A)
+	RXD    = ReBDDFDD(i,Gup_A,Gdn_A,0)
+	IXD    = ImBDDFDD(i,Gup_A,Gdn_A,0)
 	Lambda = U/(1.0+K*(RXD+1.0j*IXD))
-	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(Lambda),sp.imag(Lambda)))
-	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,RFD,IFD))
-	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i1,i2,sp.real(K),sp.imag(K)))
+	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i,sp.real(Lambda),sp.imag(Lambda)))
+	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i,RFD,IFD))
+	#print('{0: 2d} {1: 2d}\t{2: .8f} {3:+8f}i'.format(i,sp.real(K),sp.imag(K)))
 	return Lambda
 
 
@@ -155,18 +157,12 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 	if SCsolver == 'iter': [diffpp,diffpm] = [1e8,1e8]
 	## correlators don't change with Lambda iterations
 	t = time()
-	if chat: print('# - calculating correlators... ',end='',flush=True)
+	if chat: print('# - - calculating correlators... ',end='',flush=True)
 	GG1_A = CorrelatorGG(Gup_A,Gdn_A,En_A, 1, 1)
 	GG2_A = CorrelatorGG(Gup_A,Gdn_A,En_A,-1, 1)
 	GG3_A = CorrelatorGG(Gdn_A,Gup_A,En_A, 1,-1)
 	GG4_A = CorrelatorGG(Gdn_A,Gup_A,En_A,-1,-1)
 	if chat: print(' done in {0: .2f} seconds.'.format(time()-t))
-	#print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}'\
-	#.format(U,ed,T,h,sp.real(GG1_A[Nhalf]),sp.imag(GG2_A[Nhalf]),sp.imag(GG3_A[Nhalf]),sp.real(GG4_A[Nhalf])))
-	#Np = int((len(En_A)-1)/2)
-	#print('# corr. GG0 {0: .8f} {1:+8f}i'.format(sp.real(GG2_A[Np]),sp.imag(GG2_A[Np])))
-	#print(CorrelatorGGzero(Gup_A,Gdn_A,-1,1))
-	#exit()
 	#from parlib import WriteFileX
 	#WriteFileX([GG1_A,GG2_A,GG3_A,GG4_A],100.0,3,'','GGcorr.dat')
 	k = 1
@@ -179,7 +175,7 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 				Lpp = fixed_point(Eqnpp,Lpp,xtol=epsl)
 				Lpm = fixed_point(Eqnpm,Lpm,xtol=epsl)
 			except RuntimeError:
-				print("# - CalculateLambdaD: No convergence in fixed-point algorithm.")
+				print("# - Error: CalculateLambdaD: No convergence in fixed-point algorithm.")
 				print("# - Switch SCsolver to 'iter' or 'root' in siam.in and try again.")
 				exit(1)
 		elif SCsolver == 'iter':
@@ -194,20 +190,37 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lpp,Lpm):
 			if all([diffpp<diffppOld,diffpm<diffpmOld]): alpha = sp.amin([1.05*alpha,1.0])
 		elif SCsolver == 'root':
 			## implemented for complex Lambdas as 4-dimensional problem
+			ErrConv = 0
 			eqn = lambda x: VecLambdaD(Gup_A,Gdn_A,x[0],x[1],x[2],x[3])
 			sol = root(eqn,[sp.real(Lpp),sp.imag(Lpp),sp.real(Lpm),sp.imag(Lpm)],method='lm')
-			[Lpp,Lpm] = [sol.x[0]+1.0j*sol.x[1],sol.x[2]+1.0j*sol.x[3]]
+			if sol.success:
+				[Lpp,Lpm] = [sol.x[0]+1.0j*sol.x[1],sol.x[2]+1.0j*sol.x[3]]
+				if chat: print("# - - number of function calls: {0: 3d}".format(sol.nfev))
+				if chat: print("# - - convergence check: {0: .5e} {1:+5e}i, {2: .5e} {3:+5e}i"\
+				.format(sol.fun[0],sol.fun[1],sol.fun[2],sol.fun[3]))
+				for x in sol.fun: 
+					if sp.fabs(x)>epsl:
+						print('# - - Warning: CalculateLambdaD: Convergence criteria for Lambda not satisfied!')
+						ErrConv = 1
+				#print(sol.status) # 1 - gtol satisfied, 2 - ftol satisfied
+			else:
+				print("# - - Error: CalculateLambdaD: no solution by MINPACK root. Message from root:")
+				print("# - - "+sol.message)
+				exit(1)
+			if ErrConv:
+				print("# - - Error: CalculateLambdaD: no convergence in MINPACK root routine.")
+				print("# - - Switch SCsolver to 'iter' or 'fixed' in siam.in and try again.")
+				exit(1)
 			break ## we don't need the outer loop here
 		else:
-			print('# - CalculateLambdaD: Unknown SCsolver')
+			print('# - - Error: CalculateLambdaD: Unknown SCsolver')
 			exit(1)
 		if chat: print('# - - iter. {0: 3d}: Lambda(++): {1: .8f} {2:+8f}i  Lambda(+-): {3: .8f} {4:+8f}i'\
 		.format(k,sp.real(Lpp),sp.imag(Lpp),sp.real(Lpm),sp.imag(Lpm)))
 		if k > 1000:
-			print('# - CalculateLambdaD: No convergence after 1000 iterations. Exit.')
+			print('# - - Error: CalculateLambdaD: No convergence after 1000 iterations. Exit.')
 			exit(1)
 		k += 1
-		print([Lpp,Lpm])
 	return [Lpp,Lpm]
 
 
@@ -239,7 +252,15 @@ def CalculateSigmaT(Lpp,Lpm,S0,S1,GFlambda,DLambda):
 	LSymmPM = sp.real(Lpm)	## 0.5*(LambdaPM+sp.conj(LambdaPM))
 	eqn = lambda x: VecSigmaT(x[0],x[1],x[2],LSymmPP,LSymmPM,GFlambda,DLambda)
 	sol = root(eqn,[S0,sp.real(S1),sp.imag(S1)],method='lm')
-	[Sigma0,Sigma1] = [sol.x[0],sol.x[1]+1.0j*sol.x[2]]
+	if sol.success:
+		[Sigma0,Sigma1] = [sol.x[0],sol.x[1]+1.0j*sol.x[2]]
+		if chat: print("# - - number of function calls: {0: 3d}".format(sol.nfev))
+		if chat: print("# - - convergence check: {0: .5e}, {1: .5e} {2:+5e}i"\
+		.format(sol.fun[0],sol.fun[1],sol.fun[2]))
+	else:
+		print("# - Error: CalculateSigmaT: no solution by MINPACK root. Message from root:")
+		print("# - - "+sol.message)
+		exit(1)	
 	return [Sigma0,Sigma1]
 
 

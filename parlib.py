@@ -190,6 +190,8 @@ def CalculateLambda(Bubble_A,GFup_A,GFdn_A):
 		Lambda = brentq(eqn,LMin,LMax,xtol=epsl)
 	except ValueError:
 		print('# Error: CalculateLambda: brentq failed to calculate Lambda, probably too close to critical U.')
+#		print('#        Using Lambda = 0.99*pi')
+#		Lambda = 0.99*sp.pi
 		exit()
 	return Lambda
 
