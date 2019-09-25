@@ -5,11 +5,11 @@ dE               : 1e-4
 PrecLambda       : 1e-6
 PrecSigmaT       : 1e-4
 PrecN            : 1e-4
-alpha            : 0.5
+alpha            : 0.1
 
-;SCsolver         : 'fixed'
-;SCsolver         : 'iter'
-SCsolver         : 'root'
+;SCsolver         : fixed
+;SCsolver         : iter
+SCsolver         : root
 
 ;GFtype           : semi
 GFtype           : lor

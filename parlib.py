@@ -38,20 +38,6 @@ def Filling(GF_A):
 	## old tail: fit by a/x**2
 	TailL1 = -DOS_A[ 0]*En_A[ 0]	# left tail
 	TailR1 =  DOS_A[-1]*En_A[-1]	# right tail
-	## new tail: fit by a/x**2+b/x**4
-	## this fit depends on the length of the fitting interval
-	## this is usually inferior to the simple one-point scheme
-	#K = int(len(En_A)/100) 	## length of the fitting interval
-	#a = lambda x1,x2,f1,f2:        (f1*x1**4-f2*x2**4)/(x1**2-x2**2)
-	#b = lambda x1,x2,f1,f2,ab: 0.5*(f1*x1**4+f2*x2**4-ab*(x1**2+x2**2))
-	#aL = a(En_A[ 0],En_A[ K],DOS_A[ 0],DOS_A[ K])
-	#bL = b(En_A[ 0],En_A[ K],DOS_A[ 0],DOS_A[ K],aL)
-	#aR = a(En_A[-K],En_A[-1],DOS_A[-K],DOS_A[-1])
-	#bR = b(En_A[-K],En_A[-1],DOS_A[-K],DOS_A[-1],aR)
-	#TailL2 = -aL/En_A[ 0]-bL/(3.0*En_A[ 0]**3)
-	#TailR2 = -aR/En_A[-1]-bL/(3.0*En_A[-1]**3)
-	#print('# - Filling(): tails: L1 {0: .8f},  R1 {1: .8f}'.format(TailL,TailR))
-	#print('#                     L2 {0: .8f},  R2 {1: .8f}'.format(TailL2,TailR2))
 	return simps(DOS_A,En_A) + TailL1 + TailR1
 
 ## functions to calculate spectral density ################
@@ -97,7 +83,7 @@ def GreensFunctionSquare(x,izero,W):
 	return sp.array(2.0*K((W/x)**2)/(sp.pi*x),dtype=complex)
 
 
-def GreensFunctionSC(x,W):
+def GreensFunctionSCubic(x,W):
 	''' local Green's function electrons on a 3D sc lattice '''
 	## scipy version of hyp2f1 has precision issues arouns some points
 	#from scipy.special import hyp2f1
@@ -114,6 +100,29 @@ def GreensFunctionSC(x,W):
 	ellip2 = K(0.5-kpm1-kpm2)
 	return sp.array((3.0/W)*4.0*sp.sqrt(1.0-0.75*A)/(1.0-A)*ellip1*ellip2/(sp.pi**2*x),dtype=complex)
 
+
+## superconducting Green function
+
+def GapFunction(x,Delta):
+	''' returns one when -Delta<x<Delta, zero otherwise '''
+	return sp.sign(Delta**2-x**2)/2.0+0.5
+
+
+def BandFunction(x,Delta):
+	''' returns one when |x|>Delta, zero otherwise '''
+	return sp.sign(x**2-Delta**2)/2.0+0.5
+
+
+def HybFunctionSC(x,izero,GammaS,GammaN,Delta,Phi):
+	''' hybridization function for the rotated superconducting model at half-filling '''
+	return GammaN+2.0*GammaS*sp.fabs(x)*BandFunction(x,Delta)/sp.sqrt((x+1.0j*izero)**2-Delta**2)\
+	*(1.0-Delta/(x+1.0j*izero)*sp.cos(Phi/2.0))
+
+
+def GreensFunctionSC(x,izero,GammaS,GammaN,Delta,Phi):
+	return 1.0/(En_A+1.0j*izero+1.0j*HybFunctionSC(x,izero,GammaS,GammaN,Delta,Phi))
+
+## functions to manipulate and process spectra
 
 def ShiftGreensFunction(GF_A,shift):
 	''' fill the GF array with GF shifted by real, static self-energy '''
@@ -178,12 +187,14 @@ def LambdaFunction(Lambda,Bubble_A,GFup_A,GFdn_A):
 
 
 def CalculateLambda(Bubble_A,GFup_A,GFdn_A):
-	''' function to calculate new Lambda from previous iteration '''
+	''' function to calculate static Lambda '''
 	Uc = -1.0/sp.real(Bubble_A[int(len(En_A)/2)])
+	print('# - - Critical U: {0: .6f}'.format(Uc))
 	if Uc < 1e-6:
 		print('# Warning: CalculateLambda: critical U is very small, please check the bubble.')	
 	LMin = 0.0
 	LMax = Uc-1e-10
+	#if GFtype == 'sc': LMax = 10.0 ## :SCGF
 	try:
 		eqn = lambda x: x-LambdaFunction(x,Bubble_A,GFup_A,GFdn_A)
 		w = 0.0
@@ -234,7 +245,6 @@ def SpecHWHM(GFint_A):
 	DOSF = -sp.imag(GFint_A[N/2])/sp.pi	# value at Fermi energy
 	DOS = InterpolatedUnivariateSpline(En_A,-sp.imag(GFint_A)/sp.pi-DOSF/2.0)
 	return sp.amin(sp.fabs(DOS.roots()))
-
 
 ## convolutions in Matsubara frequencies ##################
 
@@ -358,36 +368,6 @@ def WriteFileX(X_L,WriteMax,de_dec,header,filename):
 			f.write(line+'\n')
 	f.close
 	if chat: print('#   File '+filename+' written.')
-
-"""
-def WriteFile(X1_A,X2_A,X3_A,WriteMax,de_dec,header,filename):
-	''' writes data arrays to file, writes three complex arrays at once '''
-	f = open(filename,'w')
-	f.write("# file written "+ctime()+'\n')
-	f.write(header+'\n')
-	for i in range(len(En_A)):
-		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
-			f.write('{0: .6f}\t{1: .6f}\t{2: .6f}\t{3: .6f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\n'\
-			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
-			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))))
-	f.close
-	if chat: print('#   File '+filename+' written.')
-
-
-def WriteFile2(X1_A,X2_A,X3_A,X4_A,WriteMax,de_dec,header,filename):
-	''' writes data arrays to file, writes four complex arrays at once '''
-	f = open(filename,'w')
-	f.write("# file written "+ctime()+'\n')
-	f.write(header+'\n')
-	for i in range(len(En_A)):
-		if sp.fabs(En_A[i]) <= WriteMax and sp.fabs(En_A[i] - sp.around(En_A[i],de_dec)) == 0:
-			f.write('{0: .6f}\t{1: .6f}\t{2: .6f}\t{3: .6f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\n'\
-			.format(float(En_A[i]),float(sp.real(X1_A[i])),float(sp.imag(X1_A[i])),float(sp.real(X2_A[i]))\
-			,float(sp.imag(X2_A[i])),float(sp.real(X3_A[i])),float(sp.imag(X3_A[i]))\
-			,float(sp.real(X4_A[i])),float(sp.imag(X4_A[i]))))
-	f.close
-	if chat: print('#   File '+filename+' written.')
-"""
 
 ## parlib.py end ###
 

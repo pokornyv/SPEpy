@@ -56,6 +56,11 @@ if chat:
 		print('# using iteration algorithm to calculate Lambda vertex, mixing parameter alpha = {0: .5f}'\
 		.format(float(alpha)))
 
+Delta = 1.0
+GammaS = 1.0*Delta
+GammaN = 0.1*Delta
+Phi = 0.5
+
 ###########################################################
 ## inicialize the non-interacting Green function ##########
 if GFtype == 'lor':
@@ -71,25 +76,40 @@ elif GFtype == 'gauss':
 	if chat: print('# using Gaussian non-interacting DoS')
 	GFlambda = lambda x: GreensFunctionGauss(x,Delta)
 	DensityLambda = lambda x: DensityGauss(x,Delta)
-elif GFtype == 'sc':
+elif GFtype == 'cubic':
 	if chat: print('# using simple cubic lattice non-interacting DoS')
 	W = Delta # half-bandwidth 
-	GFlambda = lambda x: GreensFunctionSC(x,W)
+	GFlambda = lambda x: GreensFunctionSCubic(x,W)
 	print('# Error: this DoS is not yet implemented.')
 	exit(1)
-elif GFtype == 'sq':
+elif GFtype == 'square':
 	if chat: print('# using square lattice non-interacting DoS')
 	W = Delta # half-bandwidth 
 	izero = 1e-6    ## imaginary shift of energies to avoid poles
 	GFlambda = lambda x: GreensFunctionSquare(x,izero,W)
 	print('# Error: this DoS is not yet implemented.')
 	exit(1)
+elif GFtype == 'sc':
+	if chat: print('# using flat non-interacting DoS with superconductng gap')
+	izero = 1e-6   ## imaginary shift of energies to avoid poles
+	GFlambda = lambda x: GreensFunctionSC(x,izero,GammaS,GammaN,Delta,Phi)
+	DensityLambda = lambda x: Filling(GFlambda(x))
 else:
 	print('# Error: DoS type "'+GFtype+'" not implemented.')
 	exit(1)
 
-## write the distributions to a file, development only
-#WriteFileX([FD_A,BE_A,FB_A],1,4,parline,'dist.dat')
+'''
+## development only
+GFTup_A = GFlambda(En_A)
+GFTdn_A = GFlambda(En_A)
+Bubble_A = TwoParticleBubble(GFTup_A,GFTdn_A,'eh')
+WriteFileX([GFTup_A,GFTdn_A,Bubble_A],WriteMax,WriteStep,parline,'GFzero.dat')
+WriteFileX([GFTup_A],WriteMax,WriteStep,parline,'GFzero'+str(GammaN)+'.dat')
+if chat: print('# - norm[GTup]: {0: .8f}, n[GTup]: {1: .8f}'\
+.format(float(IntDOS(GFTup_A)),float(Filling(GFTup_A))))
+if chat: print('# - norm[GTdn]: {0: .8f}, n[GTdn]: {1: .8f}'\
+.format(float(IntDOS(GFTdn_A)),float(Filling(GFTdn_A))))
+'''
 
 ## using the Lambda from the older method as a starting point
 if not Lin:
@@ -99,7 +119,7 @@ if not Lin:
 	Lambda0 = CalculateLambda(Bubble_A,GFzero_A,GFzero_A)
 	if chat: print('# - Lambda0 = {0: .8f}'.format(Lambda0))
 else:
-	if chat: print('# Initial guess for Lambda: L(++) = {0: .6f}, L(+-) = {1: .6f}'.format(LppIn,LmpIn))
+	if chat: print('# Initial guess for Lambda: {0: .6f}'.format(LIn))
 	
 ########################################################
 ## calculate filling of the thermodynamic Green function
@@ -138,13 +158,13 @@ if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(float(nTup+nTdn),float(
 if chat: print('#\n# calculating the Hartree-Fock self-energy:')
 if Lin:
 	## reading initial values from command line
-	[LambdaPP,LambdaPM] = [LppIn,LmpIn]
+	Lambda = LIn
 else:
 	## using the static guess
-	[LambdaPP,LambdaPM] = [Lambda0,Lambda0]
+	Lambda = Lambda0
 
 [nTupOld,nTdnOld] = [1e8,1e8]
-[Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,U*(nTup-nTdn)/2.0]
+[Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,Lambda*(nTdn-nTup)]
 
 k = 1
 while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
@@ -152,29 +172,19 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 	[nTupOld,nTdnOld] = [nTup,nTdn]
 	## Lambda vertex
 	if chat: print('# - calculating Lambda vertex:')
-	[LambdaPP,LambdaPM] = CalculateLambdaD(GFTup_A,GFTdn_A,LambdaPP,LambdaPM)
-	if chat: print('# - - Lambda vertex:  Lambda(++): {0: .8f} {1:+8f}i  Lambda(+-): {2: .8f} {3:+8f}i'\
-	.format(sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM)))
+	Lambda = CalculateLambdaD(GFTup_A,GFTdn_A,Lambda)
+	if chat: print('# - - Lambda vertex:  Lambda: {0: .8f}'.format(Lambda))
 	if True: ## print auxiliary functions, development only
 #	if False:
-		Kpp = KvertexD( 1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
-		Kmp = KvertexD(-1,LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
-		if chat: print('# - - K vertex:            K(++): {0: .8f} {1:+8f}i       K(-+): {2: .8f} {3:+8f}i'\
-		.format(sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
+		K = KvertexD(Lambda,GFTup_A,GFTdn_A)
+		if chat: print('# - - K vertex:            K: {0: .8f}'.format(K))
 		## check the integrals:
-		RFDpp = ReBDDFDD( 1,GFTup_A,GFTdn_A,0)
-		IFDpp = ImBDDFDD( 1,GFTup_A,GFTdn_A,0)
-		RFDmp = ReBDDFDD(-1,GFTup_A,GFTdn_A,0)
-		IFDmp = ImBDDFDD(-1,GFTup_A,GFTdn_A,0)
-		if chat: print('# - - aux. integrals:      X(++): {0: .8f} {1:+8f}i       X(-+): {2: .8f} {3:+8f}i'\
-		.format(RFDpp,IFDpp,RFDmp,IFDmp))
-	GG = CorrelatorGGzero(GFTdn_A,GFTup_A,1,1)
-	print('# GG0: {0: .8f} {1:+8f}i'.format(sp.real(GG),sp.imag(GG)))
+		XD = ReBDDFDD(GFTup_A,GFTdn_A,0)
+		if chat: print('# - - aux. integral:       X: {0: .8f}'.format(XD))
 	## HF self-energy
 	if chat: print('# - calculating static self-energy:')
-	[Sigma0,Sigma1] = CalculateSigmaT(LambdaPP,LambdaPM,Sigma0,Sigma1,GFlambda,DensityLambda)
-	if chat: print('# - - static self-energy: normal: {0: .8f} {1:+8f}i,  anomalous: {2: .8f} {3:+8f}i'\
-	.format(sp.real(Sigma0),sp.imag(Sigma0),sp.real(Sigma1),sp.imag(Sigma1)))
+	[Sigma0,Sigma1] = CalculateSigmaT(Lambda,Sigma0,Sigma1,GFlambda,DensityLambda)
+	if chat: print('# - - static self-energy: normal: {0: .8f},  anomalous: {1: .8f}'.format(Sigma0,Sigma1))
 	GFTup_A = GFlambda(En_A-ed-Sigma0+(h-Sigma1))
 	GFTdn_A = GFlambda(En_A-ed-Sigma0-(h-Sigma1))
 	## symmetrize the Green function if possible
@@ -198,12 +208,6 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 		print('# Warning: non-zero imaginary part of nT, up: {0: .8f}, dn: {1: .8f}.'\
 		.format(sp.imag(nTup),sp.imag(nTdn)))
 	[nTup,nTdn] = [sp.real(nTup),sp.real(nTdn)]
-	if T > 0.0:
-		## print integrals for control 
-		IG0p = IntGdiff(GFTup_A,GFTdn_A)
-		IG0m = IntGdiff(sp.conj(GFTup_A),sp.conj(GFTdn_A))
-		if chat: print('# - integrals <Gup-Gdn>: I(+) {0: .8f} {1:+8f}i, I(-) {2: .8f} {3:+8f}i'\
-		.format(sp.real(IG0p),sp.imag(IG0p),sp.real(IG0m),sp.imag(IG0m)))
 	## print output for given iteration
 	if chat: 
 		print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
@@ -213,28 +217,17 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 
 if chat: print('# - Calculation of the Hartree-Fock self-energy finished after {0: 3d} iterations.'.format(int(k-1)))
 
-print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}'\
-.format(T,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp)))
-
-Det_A = DeterminantGD(LambdaPP,LambdaPM,GFTup_A,GFTdn_A)
+Det_A = DeterminantGD(Lambda,GFTup_A,GFTdn_A)
 Dzero = Det_A[int((len(En_A)-1)/2)]
 if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.real(Dzero),sp.imag(Dzero)))
 ## write the determinant to a file, for development only
 #WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
 
-## check the zero of the determinant, development only
-#GG0 = CorrelatorGGzero(GFTup_A,GFTdn_A,1,1)
-#CDD=1.0+2.0*sp.real(GG0*LambdaPP)+absC(GG0)*(absC(LambdaPP)-absC(LambdaPM))
-#print("# - check D(0): {0: .8f} {1:+8f}i".format(sp.real(CDD),sp.imag(CDD)))
-
-#print('{0: .4f}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}\t{5: .8f}\t{6: .8f}\t{7: .8f}\t{8: .8f}\t{9: .8f}'\
-#.format(T,RFDpp,IFDpp,RFDmp,IFDmp,sp.real(Kpp),sp.imag(Kpp),sp.real(Kmp),sp.imag(Kmp),sp.real(Dzero)))
-
 ###########################################################
 ## spectral self-energy ###################################
 if chat: print('#\n# calculating the spectral self-energy:')
-SigmaUp_A = SelfEnergyD2(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'up')
-SigmaDn_A = SelfEnergyD2(GFTup_A,GFTdn_A,LambdaPP,LambdaPM,'dn')
+SigmaUp_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'up')
+SigmaDn_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'dn')
 Sigma_A = (SigmaUp_A+SigmaDn_A)/2.0
 
 ## quasiparticle weights
@@ -297,7 +290,7 @@ if chat: print('# - HWHM: spin-up: {0: .8f}, spin-dn: {1: .8f}'.format(float(HWH
 ## zero-field susceptibility
 if h==0.0:	
 	ChiT = sp.real(SusceptibilityTherm(Dzero,GFTup_A))
-	ChiS = sp.real(SusceptibilitySpecD(LambdaPP,ChiT,GFintUp_A))
+	ChiS = sp.real(SusceptibilitySpecD(Lambda,ChiT,GFintUp_A))
 	if chat: print('# - thermodynamic susceptibility: {0: .8f}'.format(ChiT))
 	if chat: print('# -      spectral susceptibility: {0: .8f}'.format(ChiS))
 else:
@@ -317,8 +310,8 @@ if WriteGF:
 
 ## write data to standard output
 ## use awk 'NR%2==0', awk 'NR%2==1' to separate the output into two blocks
-print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
-.format(U,ed,T,h,sp.real(LambdaPP),sp.imag(LambdaPP),sp.real(LambdaPM),sp.imag(LambdaPM),HWHMup,Z,DOSFup,sp.real(Dzero)))
+print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}'\
+.format(U,ed,T,h,sp.real(Lambda),HWHMup,Z,DOSFup,sp.real(Dzero)))
 
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}'\
 .format(U,ed,T,h,nTup,nTdn,nUp,nDn,ChiT,ChiS))

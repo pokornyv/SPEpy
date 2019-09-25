@@ -23,11 +23,10 @@ except IndexError:
 
 ## reading guess for Lambdas from command line
 try:
-	LppIn = float(argv[6])
-	LmpIn = float(argv[7])
+	LIn = float(argv[6])
 	Lin = True
 except IndexError:
-	LppIn = LmpIn = 0.0
+	LIn = 0.0
 	Lin = False
 
 ###########################################################
