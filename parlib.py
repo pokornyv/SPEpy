@@ -8,7 +8,7 @@
 import scipy as sp
 from sys import exit
 from time import ctime
-from scipy.integrate import simps
+from scipy.integrate import simps,trapz
 from scipy.fftpack import fft,ifft
 from scipy.interpolate import InterpolatedUnivariateSpline,UnivariateSpline
 from scipy.optimize import brentq,fixed_point
@@ -38,14 +38,15 @@ def Filling(GF_A):
 	## old tail: fit by a/x**2
 	TailL1 = -DOS_A[ 0]*En_A[ 0]	# left tail
 	TailR1 =  DOS_A[-1]*En_A[-1]	# right tail
+	#print(simps(DOS_A,En_A),TailL1,TailR1)
 	return simps(DOS_A,En_A) + TailL1 + TailR1
 
 ## functions to calculate spectral density ################
 
-def GreensFunctionSemi(E,W):
+def GreensFunctionSemi(x,W):
 	'''	local Green's function for semielliptic band '''
-	## small imaginary part helps to keep us on the right brach of the square root
-	gz = E+1e-12j
+	## small imaginary part helps to keep us on the right branch of the square root
+	gz = x+1e-12j
 	return (2.0*gz/W**2)*(1.0-sp.sqrt(1.0-W**2/gz**2))
 
 
@@ -54,9 +55,9 @@ def DensitySemi(x,W):
 	return sp.real(0.5 - x*sp.sqrt(W**2-x**2)/(sp.pi*W**2) - sp.arcsin(x/W)/sp.pi)
 
 
-def GreensFunctionLorenz(E,Delta):
-	'''	local Green's function for Lorentzian band '''
-	return 1.0/(E+1.0j*Delta)
+def GreensFunctionLorenz(x,Delta):
+	'''	local Green's function for Lorenzian band '''
+	return 1.0/(x+1.0j*Delta)
 
 
 def DensityLorentz(x,Delta):
@@ -64,9 +65,9 @@ def DensityLorentz(x,Delta):
 	return 0.5 - sp.arctan(x/Delta)/sp.pi
 
 
-def GreensFunctionGauss(E,Gamma):
+def GreensFunctionGauss(x,Gamma):
 	'''	local Green's function for Gaussian band '''
-	return -1.0j*sp.sqrt(sp.pi/(2.0*Gamma**2))*wofz(E/sp.sqrt(2.0*Gamma**2))
+	return -1.0j*sp.sqrt(sp.pi/(2.0*Gamma**2))*wofz(x/sp.sqrt(2.0*Gamma**2))
 
 
 def DensityGauss(x,Gamma):
@@ -101,26 +102,46 @@ def GreensFunctionSCubic(x,W):
 	return sp.array((3.0/W)*4.0*sp.sqrt(1.0-0.75*A)/(1.0-A)*ellip1*ellip2/(sp.pi**2*x),dtype=complex)
 
 
-## superconducting Green function
+## superconducting quantum dot Green function
 
-def GapFunction(x,Delta):
-	''' returns one when -Delta<x<Delta, zero otherwise '''
-	return sp.sign(Delta**2-x**2)/2.0+0.5
-
-
-def BandFunction(x,Delta):
-	''' returns one when |x|>Delta, zero otherwise '''
-	return sp.sign(x**2-Delta**2)/2.0+0.5
+def GapFunction(x,DeltaS):
+	''' returns one when -DeltaS<=x<=DeltaS, zero otherwise '''
+	return sp.heaviside(DeltaS**2-x**2,0.0)
 
 
-def HybFunctionSC(x,izero,GammaS,GammaN,Delta,Phi):
-	''' hybridization function for the rotated superconducting model at half-filling '''
-	return GammaN+2.0*GammaS*sp.fabs(x)*BandFunction(x,Delta)/sp.sqrt((x+1.0j*izero)**2-Delta**2)\
-	*(1.0-Delta/(x+1.0j*izero)*sp.cos(Phi/2.0))
+def BandFunction(x,DeltaS):
+	''' returns one when |x|>DeltaS, zero otherwise '''
+	return sp.heaviside(x**2-DeltaS**2,1.0)
 
 
-def GreensFunctionSC(x,izero,GammaS,GammaN,Delta,Phi):
-	return 1.0/(En_A+1.0j*izero+1.0j*HybFunctionSC(x,izero,GammaS,GammaN,Delta,Phi))
+def HybFunctionSC(x,GammaS,GammaN,DeltaS,Phi,sgnA=1):
+	''' imaginary part of the hybridization function for the rotated sc model at half-filling 
+	sgnA chooses the sign of the shift due to anomalous componnet, +1 or -1 '''
+	RH = GapFunction(sp.real(x),DeltaS)/sp.sqrt(DeltaS**2-x**2)*(x+sgnA*DeltaS*sp.cos(Phi/2.0))
+	IH = BandFunction(sp.real(x),DeltaS)*sp.sign(sp.real(x))/sp.sqrt(x**2-DeltaS**2)*(x+sgnA*DeltaS*sp.cos(Phi/2.0))
+	return GammaS*(RH+1.0j*IH)
+
+
+def GreensFunctionSC(x,Hyb_A,GammaN):
+	''' local Green function for the rotated superconducting model at half-filling '''
+	return 1.0/(x+Hyb_A+1.0j*GammaN)
+
+
+def GreensFunctionSCinf(x,GammaS,GammaN,Phi):
+	''' local Green function for the rotated model at half-filling in
+	superconducting atomic limit (infinite sc gap) 
+	plus sign in energy shift guarantees correct sign of the anomalous function '''
+	return 1.0/(x+GammaS*sp.cos(Phi/2.0)+1.0j*GammaN)
+
+
+def JosephsonCurrent(GFanom_A,En_A):
+	''' Josephson current from anomalous GF '''
+	RH_A = GammaS*GapFunction(sp.real(En_A),DeltaS)/sp.sqrt(DeltaS**2-En_A**2)
+	IH_A = GammaS*BandFunction(sp.real(En_A),DeltaS)*sp.sign(sp.real(En_A))/sp.sqrt(En_A**2-DeltaS**2)
+	HybJC_A = RH_A+1.0j*IH_A
+	Int_A = sp.imag(HybJC_A*GFanom_A)*FD_A
+	return -sp.real(2.0*DeltaS*GammaS*sp.sin(Phi/2.0)*simps(Int_A,En_A)/sp.pi)
+
 
 ## functions to manipulate and process spectra
 
@@ -188,8 +209,8 @@ def LambdaFunction(Lambda,Bubble_A,GFup_A,GFdn_A):
 
 def CalculateLambda(Bubble_A,GFup_A,GFdn_A):
 	''' function to calculate static Lambda '''
-	Uc = -1.0/sp.real(Bubble_A[int(len(En_A)/2)])
-	print('# - - Critical U: {0: .6f}'.format(Uc))
+	Uc = -1.0/sp.real(Bubble_A[Nhalf])
+	#if chat: print('# - Critical U: {0: .6f}'.format(Uc))
 	if Uc < 1e-6:
 		print('# Warning: CalculateLambda: critical U is very small, please check the bubble.')	
 	LMin = 0.0
@@ -204,6 +225,8 @@ def CalculateLambda(Bubble_A,GFup_A,GFdn_A):
 #		print('#        Using Lambda = 0.99*pi')
 #		Lambda = 0.99*sp.pi
 		exit()
+		#Lambda = 0.1
+	#print('{0: .5f}\t{1: .8f}\t{2: .8f}'.format(U,Uc,Lambda))
 	return Lambda
 
 ## susceptibilities #######################################
@@ -268,8 +291,9 @@ def TwoParticleBubble(F1_A,F2_A,channel):
 	return Chi_A
 
 
-def SelfEnergy(GF_A,ChiGamma_A):
-	''' calculating the dynamical self-energy from the Schwinger-Dyson equation '''
+def SelfEnergyKK(GF_A,ChiGamma_A):
+	''' calculating the dynamical self-energy from the Schwinger-Dyson equation 
+	uses KramersKronigFFT to calculate the real part '''
 	N = int((len(En_A)-1)/2)
 	## zero-padding the arrays
 	exFD_A = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
@@ -282,6 +306,22 @@ def SelfEnergy(GF_A,ChiGamma_A):
 	ImSE_A = sp.real(ifft(ftImSE1_A+ftImSE2_A))/sp.pi
 	ImSE_A = sp.concatenate([ImSE_A[3*N+4:],ImSE_A[:N+1]])
 	Sigma_A = KramersKronigFFT(ImSE_A) + 1.0j*ImSE_A
+	return Sigma_A
+
+
+def SelfEnergy(GF_A,ChiGamma_A):
+	''' calculating the dynamical self-energy from the Schwinger-Dyson equation '''
+	N = int((len(En_A)-1)/2)
+	## zero-padding the arrays
+	exFD_A = sp.concatenate([FD_A[N:],sp.zeros(2*N+3),FD_A[:N]])
+	exBE_A = sp.concatenate([BE_A[N:],sp.zeros(2*N+3),BE_A[:N]])
+	exGF_A = sp.concatenate([GF_A[N:],sp.zeros(2*N+3),GF_A[:N]])
+	exCG_A = sp.concatenate([ChiGamma_A[N:],sp.zeros(2*N+3),ChiGamma_A[:N]])
+	## performing the convolution
+	ftSE1_A = -sp.conj(fft(exBE_A*sp.imag(exCG_A)))*fft(exGF_A)*dE
+	ftSE2_A =  fft(exFD_A*sp.imag(exGF_A))*sp.conj(fft(exCG_A))*dE
+	SE_A = ifft(ftSE1_A+ftSE2_A)/sp.pi
+	Sigma_A = sp.concatenate([SE_A[3*N+4:],SE_A[:N+1]])
 	return Sigma_A
 
 

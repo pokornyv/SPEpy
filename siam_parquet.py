@@ -2,7 +2,7 @@
 # SPEpy - simplified parquet equation solver for SIAM     #
 # Copyright (C) 2019  Vladislav Pokorny; pokornyv@fzu.cz  #
 # homepage: github.com/pokornyv/SPEpy                     #
-# siam_dynamic.py - solver for SPE                        #
+# siam_parquet.py - solver for SPE                        #
 # method described in <not published>                     #
 ###########################################################
 
@@ -35,7 +35,7 @@ hashes = '#'*80
 ## python version
 ver = str(version_info[0])+'.'+str(version_info[1])+'.'+str(version_info[2])
 ## header for files so we store the parameters along with data
-parline = '# U = {0: .4f}, Delta = {1: .4f}, ed = {2: .4f}, h = {3: .4f}, T = {4: .4f}'\
+parline = '# U = {0: .5f}, Delta = {1: .5f}, ed = {2: .5f}, h = {3: .5f}, T = {4: .5f}'\
 .format(U,Delta,ed,h,T)
 
 ## print the header #######################################
@@ -44,8 +44,7 @@ if chat:
 	print('# python version: '+str(ver)+', SciPy version: '+str(sp.version.version))
 	print('# energy axis: [{0: .5f} ..{1: .5f}], step = {2: .5f}, length = {3: 3d}'\
      .format(En_A[0],En_A[-1],dE,len(En_A)))
-	print('# U = {0: .5f}, Delta = {1: .5f}, ed = {2: .5f}, h = {3: .5f}, T = {4: .5f}'\
-	.format(U,Delta,ed,h,T))
+	print(parline)
 	print('# Kondo temperature from Bethe ansatz: Tk ~{0: .5f}'\
 	.format(float(KondoTemperature(U,Delta,ed))))
 	if SCsolver == 'fixed': 
@@ -55,11 +54,6 @@ if chat:
 	else: 
 		print('# using iteration algorithm to calculate Lambda vertex, mixing parameter alpha = {0: .5f}'\
 		.format(float(alpha)))
-
-Delta = 1.0
-GammaS = 1.0*Delta
-GammaN = 0.1*Delta
-Phi = 0.5
 
 ###########################################################
 ## inicialize the non-interacting Green function ##########
@@ -89,27 +83,9 @@ elif GFtype == 'square':
 	GFlambda = lambda x: GreensFunctionSquare(x,izero,W)
 	print('# Error: this DoS is not yet implemented.')
 	exit(1)
-elif GFtype == 'sc':
-	if chat: print('# using flat non-interacting DoS with superconductng gap')
-	izero = 1e-6   ## imaginary shift of energies to avoid poles
-	GFlambda = lambda x: GreensFunctionSC(x,izero,GammaS,GammaN,Delta,Phi)
-	DensityLambda = lambda x: Filling(GFlambda(x))
 else:
 	print('# Error: DoS type "'+GFtype+'" not implemented.')
 	exit(1)
-
-'''
-## development only
-GFTup_A = GFlambda(En_A)
-GFTdn_A = GFlambda(En_A)
-Bubble_A = TwoParticleBubble(GFTup_A,GFTdn_A,'eh')
-WriteFileX([GFTup_A,GFTdn_A,Bubble_A],WriteMax,WriteStep,parline,'GFzero.dat')
-WriteFileX([GFTup_A],WriteMax,WriteStep,parline,'GFzero'+str(GammaN)+'.dat')
-if chat: print('# - norm[GTup]: {0: .8f}, n[GTup]: {1: .8f}'\
-.format(float(IntDOS(GFTup_A)),float(Filling(GFTup_A))))
-if chat: print('# - norm[GTdn]: {0: .8f}, n[GTdn]: {1: .8f}'\
-.format(float(IntDOS(GFTdn_A)),float(Filling(GFTdn_A))))
-'''
 
 ## using the Lambda from the older method as a starting point
 if not Lin:
@@ -156,15 +132,13 @@ if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(float(nTup+nTdn),float(
 ###########################################################
 ## calculate the Lambda vertex ############################
 if chat: print('#\n# calculating the Hartree-Fock self-energy:')
-if Lin:
-	## reading initial values from command line
+if Lin: ## reading initial values from command line
 	Lambda = LIn
-else:
-	## using the static guess
+else: ## using the static guess
 	Lambda = Lambda0
 
 [nTupOld,nTdnOld] = [1e8,1e8]
-[Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,Lambda*(nTdn-nTup)]
+[Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,Lambda*(nTdn-nTup)/2.0]
 
 k = 1
 while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
@@ -302,6 +276,7 @@ if WriteGF:
 	header = parline+'\n# E\t\tRe GF0\t\tIm GF0\t\tRe SE\t\tIm SE\t\tRe GF\t\tIm GF'
 	filename = 'gfUp_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
 	WriteFileX([GFTup_A,SigmaUp_A,GFintUp_A],WriteMax,WriteStep,header,filename)
+	#WriteFileX([GFTup_A,SigmaUp_A,(GFintUp_A+sp.flipud(GFintUp_A))/2.0],WriteMax,WriteStep,header,'symmGF.dat')
 	if h!=0.0:	
 		filename = 'gfDn_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
 		WriteFileX([GFTdn_A,SigmaDn_A,GFintDn_A],WriteMax,WriteStep,header,filename)
@@ -318,5 +293,5 @@ print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7:
 
 if chat: print('# '+argv[0]+' DONE after {0: .2f} seconds.'.format(float(time()-t)))
 
-## siam_dynamic.py end ###
+## siam_parquet.py end ###
 

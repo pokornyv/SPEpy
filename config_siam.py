@@ -11,25 +11,6 @@ from os import listdir
 from sys import argv
 
 ###########################################################
-## reading parameters from command line ###################
-U      = float(argv[1])
-Delta  = float(argv[2])
-ed     = float(argv[3])
-T      = float(argv[4])
-try:
-	h = float(argv[5])
-except IndexError:
-	h = 0.0
-
-## reading guess for Lambdas from command line
-try:
-	LIn = float(argv[6])
-	Lin = True
-except IndexError:
-	LIn = 0.0
-	Lin = False
-
-###########################################################
 ## reading config file ####################################
 cfile = 'siam.in'
 
@@ -99,6 +80,35 @@ if config.has_option('IO','WriteStep'):
 	WriteStep   = int(config.get('IO','WriteStep'))
 
 ###########################################################
+## reading parameters from command line ###################
+if GFtype in ['sc','scinf']: ## superconducting model, run super_parquet.py
+	U      = float(argv[1])
+	DeltaS = float(argv[2])
+	GammaS = float(argv[3])
+	GammaN = float(argv[4])
+	P      = float(argv[5])
+	T = eps = h = 0.0
+	Phi = P*sp.pi
+else:					## normal model, run siam_parquet.py or siam_static.py
+	U      = float(argv[1])
+	Delta  = float(argv[2])
+	ed     = float(argv[3])
+	T      = float(argv[4])
+	try:
+		h = float(argv[5])
+	except IndexError:
+		h = 0.0
+
+## reading guess for Lambdas from command line
+try:
+	LIn = float(argv[6])
+	Lin = True
+except IndexError:
+	LIn = 0.0
+	Lin = False
+
+
+###########################################################
 ## energy axis ############################################
 ## RuntimeWarning: invalid value encountered in power: 
 ## for KK we need range(N)**3, for large arrays it can hit the limit of
@@ -110,6 +120,8 @@ def FillEnergies(dE,N):
 	dE_dec = int(-sp.log10(dE))
 	En_A = sp.linspace(-(N-1)/2*dE,(N-1)/2*dE,N)
 	return sp.around(En_A,dE_dec+2)
+
+izero = 0.0 ## imaginary shift of energies, useful for DoS with poles or singularities
 
 N = 2**NE-1
 dE_dec = int(-sp.log10(dE))

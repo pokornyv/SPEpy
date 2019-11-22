@@ -131,6 +131,16 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lambda):
 				print("# - Error: CalculateLambdaD: No convergence in fixed-point algorithm.")
 				print("# - Switch SCsolver to 'iter' or 'root' in siam.in and try again.")
 				exit(1)
+		elif SCsolver == 'brentq':
+			Eqn = lambda x: LambdaVertexD(Gup_A,Gdn_A,x)-x
+			try:
+				Lambda = brentq(Eqn,0.0,0.999*U)
+				if chat: print("# - - convergence check: {0: .5e}".format(Eqn(Lambda)))
+			except RuntimeError:
+				print("# - Error: CalculateLambdaD: No convergence in Brent algorithm.")
+				print("# - Switch SCsolver to 'iter' or 'root' in siam.in and try again.")
+				exit(1)
+			break ## we don't need the outer loop here
 		elif SCsolver == 'iter':
 			print('# alpha: {0: .6f}'.format(alpha))
 			diffLold = diffL
@@ -284,7 +294,6 @@ def SelfEnergyD2(Gup_A,Gdn_A,Lambda,spin):
 	SE_A     = ifft(ftSE1_A+ftSE2_A)/sp.pi
 	SE_A     = sp.concatenate([SE_A[3*Nhalf+4:],SE_A[:Nhalf+1]])
 	return SE_A
-
 
 ## parlib2.py end ###
 

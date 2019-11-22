@@ -56,11 +56,11 @@ elif GFtype == 'gauss':
 	if chat: print('# using Gaussian non-interacting DoS')
 	GFlambda = lambda x: GreensFunctionGauss(x,Delta)
 	DensityLambda = lambda x: DensityGauss(x,Delta)
-elif GFtype == 'sc':
+elif GFtype == 'cubic':
 	if chat: print('# using simple cubic lattice non-interacting DoS')
 	W = Delta ## half-bandwidth 
 	GFlambda = lambda x: GreensFunctionSC(x,W)
-elif GFtype == 'sq':
+elif GFtype == 'square':
 	if chat: print('# using square lattice non-interacting DoS')
 	W = Delta ## half-bandwidth 
 	GFlambda = lambda x: GreensFunctionSquare(x,izero,W)
@@ -69,7 +69,7 @@ else:
 	exit(1)
 
 if chat: print('# filling the array with the non-interacting Green function...')
-if GFtype in ['sc','sq']:
+if GFtype in ['cubic','square']:
 	fin = GFtype+'_gf_'+str(W)+'_'+str(NE)+'_'+str(dE)+'.npz'
 	try:
 		GFzero_A = sp.load(fin)['GFzero_A']
@@ -120,12 +120,12 @@ if ed!=0.0:
 		nTold = nT
 		Lambdaold = Lambda
 		SigmaT_old = SigmaT
-		if GFtype in ['sc','sq']: GFtherm_A = ShiftGreensFunction(GFzero_A,-ed-SigmaT)
+		if GFtype in ['cubic','square']: GFtherm_A = ShiftGreensFunction(GFzero_A,-ed-SigmaT)
 		else:                     GFtherm_A = GFlambda(En_A-ed-SigmaT)
 		Bubble_A = TwoParticleBubble(GFtherm_A,GFtherm_A,'eh') # Bubble[0] is negative
 		Lambda = CalculateLambda(Bubble_A,GFtherm_A,GFtherm_A)
 		## calculate nT ###################################
-		if GFtype in ['sc','sq']:
+		if GFtype in ['cubic','square']:
 			eq = lambda x: Filling(ShiftGreensFunction(GFzero_A,-ed-Lambda*(x-0.5))) - x
 		else:
 			if T == 0.0: ## zero-temperature data can be calculated more precisely
@@ -147,7 +147,7 @@ if ed!=0.0:
 	if chat: print('# Calculation of SigmaT finished after {0: 3d} iterations.'.format(int(k-1)))
 
 ## recalculate the thermodynamic Green function and bubble, just in case
-if GFtype in ['sc','sq']: GFtherm_A = ShiftGreensFunction(GFzero_A,-ed-SigmaT)
+if GFtype in ['cubic','square']: GFtherm_A = ShiftGreensFunction(GFzero_A,-ed-SigmaT)
 else:                     GFtherm_A = GFlambda(En_A-ed-SigmaT)
 Bubble_A = TwoParticleBubble(GFtherm_A,GFtherm_A,'eh')
 BubZero = Bubble_A[int(N/2)]
