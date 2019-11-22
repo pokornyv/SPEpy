@@ -4,7 +4,8 @@ SPEpy
 
 SPEpy (**S**implified **P**arquet **E**quations in **py**thon), is a python3 code to solve 
 the one-band single-impurity Anderson model (SIAM) or the one-band Hubbard model within the 
-_simplified parquet equation scheme_ (SPE) as described in Refs. [1-3].
+_simplified parquet equation scheme_ (SPE) as described in Refs. [1-3], following the basic 
+ideas of Refs. [5,6].
 This version is capable of solving SIAM with Lorentzian, Gaussian and semi-elliptic
 non-interacting density of states (DoS) and other model functions can be easily added.  
 
@@ -92,7 +93,7 @@ at the end. Raw data from last iteration are stored in *npz* archives. The evolu
 important quantities with dmft iterations is stored in *iterations.dat*.
 
 #### References:
-1. [V. Janiš, P. Zalom, V. Pokorný, and A. Klíč, *Phys. Rev. B* **100**, 195114 (2019).] (https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.195114)
+1. [V. Janiš, P. Zalom, V. Pokorný, and A. Klíč, *Phys. Rev. B* **100**, 195114 (2019).](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.195114)
 2. [V. Janiš, V. Pokorný, and A. Kauch, *Phys. Rev. B* **95**, 165113 (2017).](http://journals.aps.org/prb/abstract/10.1103/PhysRevB.95.045108)
 3. [V. Janiš, A. Kauch, and V. Pokorný, *Phys. Rev. B* **95**, 045108 (2017).](http://journals.aps.org/prb/abstract/10.1103/PhysRevB.95.165113)
 4. [V. Pokorný, M. Žonda, A. Kauch, and V. Janiš, *Acta Phys. Pol. A* **131**, 1042 (2017).](http://doi.org/10.12693/APhysPolA.131.1042)

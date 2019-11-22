@@ -3,7 +3,7 @@
 # Copyright (C) 2019  Vladislav Pokorny; pokornyv@fzu.cz  #
 # homepage: github.com/pokornyv/SPEpy                     #
 # siam_parquet.py - solver for SPE                        #
-# method described in <not published>                     #
+# method described in Phys. Rev. B 100, 195114 (2019).    #
 ###########################################################
 
 #    This program is free software: you can redistribute it and/or modify

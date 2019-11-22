@@ -26,7 +26,7 @@ WriteFileGreenF  : 1
 WriteFileVertex  : 1
 WriteDataFile    : 0
 
-WriteMax         : 30
+WriteMax         : 20
 WriteStep        : 3
 
 
