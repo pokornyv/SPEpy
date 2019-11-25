@@ -1,7 +1,7 @@
 Description of the *siam.in* file
 ================================
 
-The file *siam.in* defines various parameters used in the *siam_parquet* and *siam_static* codes.
+The file *siam.in* defines various parameters used in the *siam_parquet*, *siam_static* and *super_parquet* codes.
 
 ## Example input file *siam.in*:
 ```
@@ -18,11 +18,12 @@ alpha        : 0.5
 ;SCsolver     : 'iter'
 SCsolver     : 'root'
 
-;GFtype       : semi
 GFtype        : lor
+;GFtype       : semi
 ;GFtype       : gauss
+
 ;GFtype       : sc
-;GFtype       : sq
+;GFtype       : scinf
 
 calcSusc      : 0
 
@@ -48,10 +49,10 @@ WriteStep        : 3
 - *PrecN* - convergence criterium used in calculation of the electron density  
 - *alpha* - mixing parameter used in calculation of the thermodynamic self-energy (*siam_static*) or 
 the Lambda vertex (*siam_parquet*, if *SCsolver* = 'iter'), alpha=1 means no mixing  
-- *SCsolver* - method of solving the self-consistent equations for Lambda vertex, used only in *siam_parquet*  
-- *GFtype* - input Green function, lor - Loretzian, semi - semielliptic, gauss - gaussian, 
-sc - simple-cubic lattice, sq - square lattice  
-- *calcSusc* - 0/1 switch whether calculate susceptibilities (it takes a lot of time), used only in *siam_static*  
+- *SCsolver* - method of solving the self-consistent equations for Lambda vertex, used only in *siam_parquet* and *super_parquet*  
+- *GFtype* - input Green function, lor - Loretzian, semi - semielliptic, gauss - gaussian (only for *siam_parquet* and *siam_static*), 
+sc - supercondcting, finite gap, scinf - superconducting, infinite gap (only for *super_parquet*)  
+- *calcSusc* - 0/1 switch whether calculate susceptibilities  
 
 ### [IO] section
 
