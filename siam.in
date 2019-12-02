@@ -18,6 +18,8 @@ GFtype           : lor
 ;GFtype           : sq
 
 calcSusc         : 0
+SC               : 0
+FSC              : 0 
 
 [IO]
 
@@ -26,7 +28,7 @@ WriteFileGreenF  : 1
 WriteFileVertex  : 1
 WriteDataFile    : 0
 
-WriteMax         : 20
+WriteMax         : 30
 WriteStep        : 3
 
 

@@ -27,6 +27,9 @@ GFtype        : lor
 
 calcSusc      : 0
 
+SC            : 0
+FSC           : 0
+
 [IO]
 
 WriteOutput      : 1
@@ -53,6 +56,10 @@ the Lambda vertex (*siam_parquet*, if *SCsolver* = 'iter'), alpha=1 means no mix
 - *GFtype* - input Green function, lor - Loretzian, semi - semielliptic, gauss - gaussian (only for *siam_parquet* and *siam_static*), 
 sc - supercondcting, finite gap, scinf - superconducting, infinite gap (only for *super_parquet*)  
 - *calcSusc* - 0/1 switch whether calculate susceptibilities  
+- *SC* - 0/1 switch whether use the partial self-consistency where the spectral self-energy is calculated from
+thermodynamic bubble but spectral 1p propagator   
+- *FSC* - 0/1 switch whether use the full self-consistency where the spectral self-energy is calculated from
+spectral 2p bubble and spectral 1p propagator  
 
 ### [IO] section
 

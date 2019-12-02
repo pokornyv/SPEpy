@@ -140,6 +140,7 @@ def JosephsonCurrent(GFanom_A,En_A):
 	IH_A = GammaS*BandFunction(sp.real(En_A),DeltaS)*sp.sign(sp.real(En_A))/sp.sqrt(En_A**2-DeltaS**2)
 	HybJC_A = RH_A+1.0j*IH_A
 	Int_A = sp.imag(HybJC_A*GFanom_A)*FD_A
+	#WriteFileX([Int_A],WriteMax,WriteStep,'','JCint'+str(P)+'.dat')
 	return -sp.real(2.0*DeltaS*GammaS*sp.sin(Phi/2.0)*simps(Int_A,En_A)/sp.pi)
 
 

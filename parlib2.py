@@ -9,7 +9,7 @@ import scipy as sp
 from scipy.integrate import simps
 from scipy.fftpack import fft,ifft
 from scipy.optimize import brentq,fixed_point,root
-from parlib import KramersKronigFFT,Filling
+from parlib import KramersKronigFFT,Filling,TwoParticleBubble,WriteFileX
 from time import time
 from config_siam import *
 
@@ -30,17 +30,16 @@ def ReBDDFDD(Gup_A,Gdn_A,printint):
 	Int2_A = sp.imag(Gup_A*sp.flipud(sp.conj(Gdn_A))/sp.flipud(sp.conj(Det_A)))
 	## here we multiply big and small numbers for energies close to zero
 	#RBF1_A    = sp.exp(sp.log(FB_A)+sp.log(Int1_A))
-	RBF1_A    =  FB_A*Int1_A
+	RBF1_A    = -FB_A*Int1_A
 	RBF1_A[Nhalf] =  (RBF1_A[Nhalf-1] + RBF1_A[Nhalf+1])/2.0
 	RBF2_A    = -FD_A*Int2_A
 	TailL2    = -0.5*RBF2_A[0]*En_A[0] ## leading-order, 1/x**3 tail correction to Int2_A
 	RBF       =  (simps(RBF1_A+RBF2_A,En_A)+TailL2)/sp.pi
-	#print(' Re(X): {0: .8f}'.format(RBF))
 	if printint:
-		from parlib import WriteFileX
-		WriteFileX([Int1_A,Int2_A,RBF1_A,RBF2_A],100.0,4,'','RBF'+str(i)+'.dat')
-	#if printint: print('{0: .5f}\t{1: .8f}\t{2: .8f}\t'\
-	#.format(T,simps(RBF1_A,En_A)/sp.pi,(simps(RBF2_A,En_A)+TailL2)/sp.pi),end='',flush=True)
+		WriteFileX([Int1_A,Int2_A,RBF1_A,RBF2_A],50.0,3,'','RBF.dat')
+	print('{0: .5f}\t{1: .8f}\t{2: .8f}'\
+	.format(T,simps(RBF1_A,En_A)/sp.pi,(simps(RBF2_A,En_A)+TailL2)/sp.pi),flush=True)
+	#exit()
 	return RBF
 
 
@@ -99,11 +98,13 @@ def LambdaVertexD(Gup_A,Gdn_A,Lambda):
 	global GG1_A,GG2_A,Det_A
 	Det_A  = DeterminantGD(Lambda,Gup_A,Gdn_A)
 	K      = KvertexD(Lambda,Gup_A,Gdn_A)
+#	GFn_A = 0.5*(Gup_A-sp.flipud(sp.conj(Gup_A)))
+#	XD     = ReBDDFDD(GFn_A,GFn_A,0)
 	XD     = ReBDDFDD(Gup_A,Gdn_A,0)
 	Lambda = U/(1.0+K*XD)
-	#print('#  Lambda: {0: .8f} {1:+8f}i'.format(float(sp.real(Lambda)),float(sp.imag(Lambda))))
-	#print('#  X:      {0: .8f}'.format(XD))
-	#print('#  K:      {0: .8f} {1:+8f}i'.format(float(sp.real(K)),float(sp.imag(K))))
+	print('#  Lambda: {0: .8f} {1:+8f}i'.format(float(sp.real(Lambda)),float(sp.imag(Lambda))))
+	print('#  X:      {0: .8f}'.format(XD))
+	print('#  K:      {0: .8f} {1:+8f}i'.format(float(sp.real(K)),float(sp.imag(K))))
 	return Lambda
 
 
@@ -132,9 +133,11 @@ def CalculateLambdaD(Gup_A,Gdn_A,Lambda):
 				print("# - Switch SCsolver to 'iter' or 'root' in siam.in and try again.")
 				exit(1)
 		elif SCsolver == 'brentq':
+			Uc = -1.0/TwoParticleBubble(Gup_A,Gdn_A,'eh')[Nhalf]
+			print(Uc)
 			Eqn = lambda x: LambdaVertexD(Gup_A,Gdn_A,x)-x
 			try:
-				Lambda = brentq(Eqn,0.0,0.999*U)
+				Lambda = brentq(Eqn,0.0,Uc-1e-12)
 				if chat: print("# - - convergence check: {0: .5e}".format(Eqn(Lambda)))
 			except RuntimeError:
 				print("# - Error: CalculateLambdaD: No convergence in Brent algorithm.")
@@ -282,6 +285,30 @@ def SelfEnergyD2(Gup_A,Gdn_A,Lambda,spin):
 		BubbleD_A = BubbleD(Gdn_A,Gup_A,Lambda,spin)
 		GF_A = sp.copy(Gup_A) 
 		Det_A = sp.flipud(sp.conj(DeterminantGD(Lambda,Gup_A,Gdn_A)))
+	Kernel_A = U*BubbleD_A/Det_A
+	## zero-padding the arrays
+	FDex_A     = sp.concatenate([FD_A[Nhalf:],sp.zeros(2*Nhalf+3),FD_A[:Nhalf]])
+	BEex_A     = sp.concatenate([BE_A[Nhalf:],sp.zeros(2*Nhalf+3),BE_A[:Nhalf]])
+	GFex_A     = sp.concatenate([GF_A[Nhalf:],sp.zeros(2*Nhalf+3),GF_A[:Nhalf]])
+	Kernelex_A = sp.concatenate([Kernel_A[Nhalf:],sp.zeros(2*Nhalf+3),Kernel_A[:Nhalf]])
+	## performing the convolution
+	ftSE1_A  = -sp.conj(fft(BEex_A*sp.imag(Kernelex_A)))*fft(GFex_A)*dE
+	ftSE2_A  = +fft(FDex_A*sp.imag(GFex_A))*sp.conj(fft(Kernelex_A))*dE
+	SE_A     = ifft(ftSE1_A+ftSE2_A)/sp.pi
+	SE_A     = sp.concatenate([SE_A[3*Nhalf+4:],SE_A[:Nhalf+1]])
+	return SE_A
+
+
+def SelfEnergyD_sc(Gup_A,Gdn_A,GTup_A,GTdn_A,Lambda,spin):
+	''' dynamic self-energy, calculates the complex function from FFT '''
+	if spin == 'up': 
+		BubbleD_A = BubbleD(GTup_A,GTdn_A,Lambda,spin)
+		GF_A = sp.copy(Gdn_A) 
+		Det_A = DeterminantGD(Lambda,GTup_A,GTdn_A)
+	else: ## spin='dn'
+		BubbleD_A = BubbleD(GTdn_A,GTup_A,Lambda,spin)
+		GF_A = sp.copy(Gup_A) 
+		Det_A = sp.flipud(sp.conj(DeterminantGD(Lambda,GTup_A,GTdn_A)))
 	Kernel_A = U*BubbleD_A/Det_A
 	## zero-padding the arrays
 	FDex_A     = sp.concatenate([FD_A[Nhalf:],sp.zeros(2*Nhalf+3),FD_A[:Nhalf]])

@@ -37,6 +37,7 @@ ver = str(version_info[0])+'.'+str(version_info[1])+'.'+str(version_info[2])
 ## header for files so we store the parameters along with data
 parline = '# U = {0: .5f}, Delta = {1: .5f}, ed = {2: .5f}, h = {3: .5f}, T = {4: .5f}'\
 .format(U,Delta,ed,h,T)
+parfname = str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)
 
 ## print the header #######################################
 if chat:
@@ -47,6 +48,10 @@ if chat:
 	print(parline)
 	print('# Kondo temperature from Bethe ansatz: Tk ~{0: .5f}'\
 	.format(float(KondoTemperature(U,Delta,ed))))
+	if    SC: print('# using partial self-consistency scheme for the self-energy')
+	elif FSC: print('# using full self-consistency scheme for the self-energy')
+	else: print('# using no self-consistency scheme for the self-energy')
+	if SC and FSC: SC = False
 	if SCsolver == 'fixed': 
 		print('# using Steffensen fixed-point algorithm to calculate Lambda vertex')
 	elif SCsolver == 'root': 
@@ -70,19 +75,6 @@ elif GFtype == 'gauss':
 	if chat: print('# using Gaussian non-interacting DoS')
 	GFlambda = lambda x: GreensFunctionGauss(x,Delta)
 	DensityLambda = lambda x: DensityGauss(x,Delta)
-elif GFtype == 'cubic':
-	if chat: print('# using simple cubic lattice non-interacting DoS')
-	W = Delta # half-bandwidth 
-	GFlambda = lambda x: GreensFunctionSCubic(x,W)
-	print('# Error: this DoS is not yet implemented.')
-	exit(1)
-elif GFtype == 'square':
-	if chat: print('# using square lattice non-interacting DoS')
-	W = Delta # half-bandwidth 
-	izero = 1e-6    ## imaginary shift of energies to avoid poles
-	GFlambda = lambda x: GreensFunctionSquare(x,izero,W)
-	print('# Error: this DoS is not yet implemented.')
-	exit(1)
 else:
 	print('# Error: DoS type "'+GFtype+'" not implemented.')
 	exit(1)
@@ -131,7 +123,9 @@ if chat: print('# - nT = {0: .8f}, mT = {1: .8f}'.format(float(nTup+nTdn),float(
 
 ###########################################################
 ## calculate the Lambda vertex ############################
-if chat: print('#\n# calculating the Hartree-Fock self-energy:')
+if chat: 
+	if FSC: print('#\n# calculating the full self-energy using FSC scheme:')
+	else:   print('#\n# calculating the Hartree-Fock self-energy:')
 if Lin: ## reading initial values from command line
 	Lambda = LIn
 else: ## using the static guess
@@ -141,9 +135,12 @@ else: ## using the static guess
 [Sigma0,Sigma1] = [U*(nTup+nTdn-1.0)/2.0,Lambda*(nTdn-nTup)/2.0]
 
 k = 1
-while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
+sumsq = 1e8 if FSC else 0.0	## converence criterium for FSC scheme
+while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn, sumsq > 0.01]):
 	if chat: print('#\n# Iteration {0: 3d}'.format(k))
 	[nTupOld,nTdnOld] = [nTup,nTdn]
+	if FSC:
+		GFTupOld_A = sp.copy(GFTup_A)
 	## Lambda vertex
 	if chat: print('# - calculating Lambda vertex:')
 	Lambda = CalculateLambdaD(GFTup_A,GFTdn_A,Lambda)
@@ -182,14 +179,27 @@ while any([sp.fabs(nTupOld-nTup) > epsn, sp.fabs(nTdnOld-nTdn) > epsn]):
 		print('# Warning: non-zero imaginary part of nT, up: {0: .8f}, dn: {1: .8f}.'\
 		.format(sp.imag(nTup),sp.imag(nTdn)))
 	[nTup,nTdn] = [sp.real(nTup),sp.real(nTdn)]
+	if FSC:
+		## spectral self-energy ###################################
+		SigmaUp_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'up')
+		SigmaDn_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'dn')
+		Sigma_A   = (SigmaUp_A+SigmaDn_A)/2.0
+		## interacting Green function #############################
+		GFTup_A   = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0)+(h-Sigma1)-Sigma_A)
+		GFTdn_A   = GFlambda(En_A-ed-U/2.0*(nTup+nTdn-1.0)-(h-Sigma1)-Sigma_A)
 	## print output for given iteration
 	if chat: 
 		print('# - thermodynamic Green function filling: nTup = {0: .8f}, nTdn = {1: .8f}'.format(nTup,nTdn))
 		print('# - ed = {0: .4f}, h = {1: .4f}:    nT = {2: .8f}, mT = {3: .8f}'.format(ed,h,nTup+nTdn,nTup-nTdn))
 		print('{0: 3d}\t{1: .8f}\t{2: .8f}\t{3: .8f}\t{4: .8f}'.format(k,nTup,nTdn,nTup+nTdn,nTup-nTdn))
+	if FSC:
+		sumsq = sp.sum(sp.imag(GFTupOld_A-GFTup_A)[int(0.5*Nhalf):int(1.5*Nhalf)]**2)
+		if chat: print('# Sum of squares: {0: .8f}'.format(sumsq))
 	k+=1
 
-if chat: print('# - Calculation of the Hartree-Fock self-energy finished after {0: 3d} iterations.'.format(int(k-1)))
+if chat: 
+	if FSC: print('# - Calculation of the Hartree-Fock self-energy finished after {0: 3d} iterations.'.format(int(k-1)))
+	else:   print('# - Calculation of the full spectral self-energy finished after {0: 3d} iterations.'.format(int(k-1)))
 
 Det_A = DeterminantGD(Lambda,GFTup_A,GFTdn_A)
 Dzero = Det_A[int((len(En_A)-1)/2)]
@@ -197,18 +207,69 @@ if chat: print('# - determinant at zero energy: {0: .8f} {1:+8f}i'.format(sp.rea
 ## write the determinant to a file, for development only
 #WriteFileX([GFTup_A,GFTdn_A,Det_A],WriteMax,WriteStep,parline,'DetG.dat')
 
-###########################################################
-## spectral self-energy ###################################
-if chat: print('#\n# calculating the spectral self-energy:')
-SigmaUp_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'up')
-SigmaDn_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'dn')
-Sigma_A = (SigmaUp_A+SigmaDn_A)/2.0
+if SC: ## partial self-consistency between Sigma and G:
+	if chat: print('#\n# calculating the spectral self-energy:')
+	parfname = 'SC_'+ parfname
+	k = 1
+	sumsq = 1e8
+	GFintUp_A = sp.copy(GFTup_A)
+	GFintDn_A = sp.copy(GFTdn_A)
+	[nUp,nDn] = [nTup,nTdn]
+	while sumsq > 0.06:
+		GFintUpOld_A = sp.copy(GFintUp_A)
+		## spectral self-energy ###################################
+		if chat: print('#\n# Iteration {0: 3d}'.format(k))
+		SigmaUp_A = SelfEnergyD_sc(GFintUp_A,GFintDn_A,GFTup_A,GFTdn_A,Lambda,'up')
+		SigmaDn_A = SelfEnergyD_sc(GFintUp_A,GFintDn_A,GFTup_A,GFTdn_A,Lambda,'dn')
+		Sigma_A   = (SigmaUp_A+SigmaDn_A)/2.0
+		## interacting Green function #############################
+		GFintUp_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)+(h-Sigma1)-Sigma_A)
+		GFintDn_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)-(h-Sigma1)-Sigma_A)
+		if any([ed!=0.0,h!=0.0]):
+			[nUp,nDn] = [Filling(GFintUp_A),Filling(GFintDn_A)]
+		else: ## ed = 0 and h = 0
+			[nUp,nDn] = [0.5,0.5]
+		if chat: print('# densities:   nUp: {1: .8f}, nDn: {2: .8f}'.format(k,nUp,nDn))
+		sumsq = sp.sum(sp.imag(GFintUpOld_A-GFintUp_A)[int(0.5*Nhalf):int(1.5*Nhalf)]**2)
+		if chat: print('# Sum of squares: {0: .8f}'.format(sumsq))
+		k+=1
+elif FSC: ## full self-consistency between Sigma and G:
+		parfname = 'FSC_'+ parfname
+		GFintUp_A = sp.copy(GFTup_A)
+		GFintDn_A = sp.copy(GFTdn_A)
+		if any([ed!=0.0,h!=0.0]): [nUp,nDn] = [Filling(GFintUp_A),Filling(GFintDn_A)]
+		else:                     [nUp,nDn] = [0.5,0.5]
+else:
+	## spectral self-energy ###################################
+	if chat: print('#\n# calculating the spectral self-energy')
+	SigmaUp_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'up')
+	SigmaDn_A = SelfEnergyD2(GFTup_A,GFTdn_A,Lambda,'dn')
+	Sigma_A   = (SigmaUp_A+SigmaDn_A)/2.0
+	## interacting Green function #############################
+	if chat: print('#\n# calculating the spectral Green function:')
+	if chat: print('# - iterating the final density:')
+	[nUp,nDn] = [nTup,nTdn]
+	[nUpOld,nDnOld] = [1e8,1e8]
+	k = 1
+	while any([sp.fabs(nUpOld-nUp) > epsn, sp.fabs(nDnOld-nDn) > epsn]):
+		[nUpOld,nDnOld] = [nUp,nDn]
+		nup_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(x+nDn-1.0)+(h-Sigma1)-Sigma_A)) - x
+		ndn_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(nUp+x-1.0)-(h-Sigma1)-Sigma_A)) - x
+		nUp = brentq(nup_dens,0.0,1.0,xtol = epsn)
+		nDn = brentq(ndn_dens,0.0,1.0,xtol = epsn)
+		if chat: print('# - - {0: 3d}:   nUp: {1: .8f}, nDn: {2: .8f}'.format(k,nUp,nDn))
+		k += 1
+	GFintUp_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)+(h-Sigma1)-Sigma_A)
+	GFintDn_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)-(h-Sigma1)-Sigma_A)
 
+###########################################################
+## calculate properties ###################################
 ## quasiparticle weights
 [Zup,dReSEupdw] = QuasiPWeight(sp.real(SigmaUp_A))
 [Zdn,dReSEdndw] = QuasiPWeight(sp.real(SigmaDn_A))
 [Z,dReSEdw]     = QuasiPWeight(sp.real(Sigma_A))
 
+if chat: print('# quasiparticle weight:')
 if chat: print('# - Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
 .format(float(Z),float(dReSEdw),float(1.0/Z)))
 
@@ -218,34 +279,15 @@ if chat and h!=0.0:
 	print('# - dn spin: Z = {0: .8f}, DReSE/dw[0] = {1: .8f}, m*/m = {2: .8f}'\
 	.format(float(Zdn),float(dReSEdndw),float(1.0/Zdn)))
 
-###########################################################
-## interacting Green function #############################
-if chat: print('#\n# calculating the spectral Green function:')
-if chat: print('# - iterating the final density:')
-[nUp,nDn] = [nTup,nTdn]
-[nUpOld,nDnOld] = [1e8,1e8]
+## DoS at Fermi energy
+DOSFup = -sp.imag(GFintUp_A[int(N/2)])/sp.pi
+DOSFdn = -sp.imag(GFintDn_A[int(N/2)])/sp.pi
 
-k = 1
-while any([sp.fabs(nUpOld-nUp) > epsn, sp.fabs(nDnOld-nDn) > epsn]):
-	[nUpOld,nDnOld] = [nUp,nDn]
-	nup_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(x+nDn-1.0)+(h-Sigma1)-Sigma_A)) - x
-	ndn_dens = lambda x: Filling(GFlambda(En_A-ed-U/2.0*(nUp+x-1.0)-(h-Sigma1)-Sigma_A)) - x
-	nUp = brentq(nup_dens,0.0,1.0,xtol = epsn)
-	nDn = brentq(ndn_dens,0.0,1.0,xtol = epsn)
-	if chat: print('# - - {0: 3d}:   nUp: {1: .8f}, nDn: {2: .8f}'.format(k,nUp,nDn))
-	k += 1
-
-GFintUp_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)+(h-Sigma1)-Sigma_A)
-GFintDn_A = GFlambda(En_A-ed-U/2.0*(nUp+nDn-1.0)-(h-Sigma1)-Sigma_A)
-
+## filling
 [nUp,nDn] = [Filling(GFintUp_A),Filling(GFintDn_A)]
 if chat: 
 	print('# - spectral Green function filling: nUp = {0: .8f}, nDn = {1: .8f}'.format(nUp,nDn))
 	print('# - ed = {0: .4f}, h = {1: .4f}:    n = {2: .8f}, m = {3: .8f}'.format(ed,h,nUp+nDn,nUp-nDn))
-
-## DoS at Fermi energy
-DOSFup = -sp.imag(GFintUp_A[int(N/2)])/sp.pi
-DOSFdn = -sp.imag(GFintDn_A[int(N/2)])/sp.pi
 
 ## HWHM of the spectral function
 [HWHMup,DOSmaxUp,wmaxUp] = CalculateHWHM(GFintUp_A) 
@@ -262,7 +304,7 @@ if h!=0.0 and chat:
 if chat: print('# - HWHM: spin-up: {0: .8f}, spin-dn: {1: .8f}'.format(float(HWHMup),float(HWHMdn)))
 
 ## zero-field susceptibility
-if h==0.0:	
+if h==0.0:
 	ChiT = sp.real(SusceptibilityTherm(Dzero,GFTup_A))
 	ChiS = sp.real(SusceptibilitySpecD(Lambda,ChiT,GFintUp_A))
 	if chat: print('# - thermodynamic susceptibility: {0: .8f}'.format(ChiT))
@@ -274,13 +316,13 @@ else:
 ## write the output files #################################
 if WriteGF:
 	header = parline+'\n# E\t\tRe GF0\t\tIm GF0\t\tRe SE\t\tIm SE\t\tRe GF\t\tIm GF'
-	filename = 'gfUp_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
+	filename = 'gfUp_'+parfname+'.dat'
 	WriteFileX([GFTup_A,SigmaUp_A,GFintUp_A],WriteMax,WriteStep,header,filename)
 	#WriteFileX([GFTup_A,SigmaUp_A,(GFintUp_A+sp.flipud(GFintUp_A))/2.0],WriteMax,WriteStep,header,'symmGF.dat')
-	if h!=0.0:	
-		filename = 'gfDn_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
+	if h!=0.0:
+		filename = 'gfDn_'+parfname+'.dat'
 		WriteFileX([GFTdn_A,SigmaDn_A,GFintDn_A],WriteMax,WriteStep,header,filename)
-		filename = 'gfMag_'+str(GFtype)+'_U'+str(U)+'eps'+str(ed)+'T'+str(T)+'h'+str(h)+'.dat'
+		filename = 'gfMag_'+parfname+'.dat'
 		WriteFileX([GFintUp_A,GFintDn_A,Sigma_A],WriteMax,WriteStep,header,filename)
 
 ## write data to standard output

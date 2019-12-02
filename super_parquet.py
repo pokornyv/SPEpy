@@ -39,7 +39,7 @@ ver = str(version_info[0])+'.'+str(version_info[1])+'.'+str(version_info[2])
 if GFtype  == 'sc':
 	parline = '# U = {0: .4f}, DeltaS = {1: .4f}, GammaS = {2: .4f}, GammaN = {3: .4f}, Phi/pi = {4: .4f}, T = {5: .4f}'\
 	.format(U,DeltaS,GammaS,GammaN,P,T)
-	parfname = 'U'+str(U)+'D'+str(DeltaS)+'GS'+str(GammaS)+'GN'+str(GammaN)+'Phi'+str(P)+'.dat'
+	parfname = 'U'+str(U)+'D'+str(DeltaS)+'GS'+str(GammaS)+'GN'+str(GammaN)+'Phi'+str(P)
 elif GFtype  == 'scinf':
 	parline = '# U = {0: .4f}, DeltaS = inf, GammaS = {1: .4f}, GammaN = {2: .4f}, Phi/pi = {3: .4f}, T = {4: .4f}'\
 	.format(U,GammaS,GammaN,P,T)
@@ -89,13 +89,15 @@ if chat: print('#\n# calculating the non-interacting Green function:')
 
 GFzero_A = GFlambda(En_A)
 nzero = Filling(GFzero_A)
-if chat: print('# - norm[G0]     = {0: .8f}, n = {1: .8f}'.format(IntDOS(GFzero_A),nzero))
+if chat: print('# - norm[G0]     = {0: .8f}, n  = {1: .8f}'.format(IntDOS(GFzero_A),nzero))
 
 ## symmetrized Green function
 GFzeroNorm_A = 0.5*(GFzero_A-sp.flipud(sp.conj(GFzero_A)))
 GFzeroAnom_A = 0.5*(GFzero_A+sp.flipud(sp.conj(GFzero_A)))
-nzero2 = Filling(GFzeroNorm_A)
-if chat: print('# - norm[G0symm] = {0: .8f}, n = {1: .8f}'.format(IntDOS(GFzeroNorm_A),nzero2))
+nzero2  = Filling(GFzeroNorm_A)
+nuzero2 = Filling(GFzeroAnom_A)
+if chat: print('# - norm[G0norm] = {0: .8f}, nW = {1: .8f}'.format(IntDOS(GFzeroNorm_A),nzero2 ))
+if chat: print('# - norm[G0anom] = {0: .8f}, nu = {1: .8f}'.format(IntDOS(GFzeroAnom_A),nuzero2))
 
 #WriteFileX([GFzeroNorm_A,GFzeroAnom_A,GFzero_A],WriteMax,WriteStep,parline,'Gzero.dat')
 
@@ -107,27 +109,30 @@ nHF = brentq(eqn,0.0,1.0)
 
 GFzero_A = GFlambda(En_A-U*(nHF-0.5))
 nHF = Filling(GFzero_A)
-if chat: print('# - norm[GHF]     = {0: .8f}, n = {1: .8f}'.format(IntDOS(GFzero_A),nHF))
+if chat: print('# - norm[GHF]     = {0: .8f}, nW = {1: .8f}'.format(IntDOS(GFzero_A),nHF))
 
 ## symmetrized Green function
 GFzeroNorm_A = 0.5*(GFzero_A-sp.flipud(sp.conj(GFzero_A)))
 GFzeroAnom_A = 0.5*(GFzero_A+sp.flipud(sp.conj(GFzero_A)))
-nHF2 = Filling(GFzeroNorm_A)
-if chat: print('# - norm[GHFsymm] = {0: .8f}, n = {1: .8f}'.format(IntDOS(GFzeroNorm_A),nHF2))
+nHF2  = Filling(GFzeroNorm_A)
+nuHF2 = Filling(GFzeroAnom_A)
+if chat: print('# - norm[GHFnorm] = {0: .8f}, n  = {1: .8f}'.format(IntDOS(GFzeroNorm_A),nHF2 ))
+if chat: print('# - norm[GHFanom] = {0: .8f}, nu = {1: .8f}'.format(IntDOS(GFzeroAnom_A),nuHF2))
 
 JCHF = JosephsonCurrent(GFzeroAnom_A,En_A)
 if chat: print('# - Josephson current: {0: .8f}'.format(JCHF))
 
 '''
 ## print all combinations of bubbles, debug only
-Bubble_A = TwoParticleBubble(GFzeroNorm_A,GFzeroNorm_A,'eh')
-WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'NN.dat')
-Bubble_A = TwoParticleBubble(GFzeroAnom_A,GFzeroAnom_A,'eh')
-WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'AA.dat')
-Bubble_A = TwoParticleBubble(GFzeroNorm_A,GFzeroAnom_A,'eh')
-WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'NA.dat')
-Bubble_A = TwoParticleBubble(GFzeroAnom_A,GFzeroNorm_A,'eh')
-WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'AN.dat')
+channel='ee'
+Bubble_A = TwoParticleBubble(GFzeroNorm_A,GFzeroNorm_A,channel)
+WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'NNee.dat')
+Bubble_A = TwoParticleBubble(GFzeroAnom_A,GFzeroAnom_A,channel)
+WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'AAee.dat')
+Bubble_A = TwoParticleBubble(GFzeroNorm_A,GFzeroAnom_A,channel)
+WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'NAee.dat')
+Bubble_A = TwoParticleBubble(GFzeroAnom_A,GFzeroNorm_A,channel)
+WriteFileX([Bubble_A],WriteMax,WriteStep,parline,'bubble'+str(GammaN)+'ANee.dat')
 exit()
 '''
 
@@ -137,6 +142,18 @@ if WriteGF:
 	header = parline+'\n# E\t\tRe GF0\t\tIm GF0\t\tRe SE\t\tIm SE\t\tRe GF\t\tIm GF'
 	filename = 'gf_HF_'+parfname+'.dat'
 	WriteFileX([GFzeroNorm_A,GFzeroAnom_A,GFzero_A],WriteMax,WriteStep,header,filename)
+	RI1 = sp.real(GFzeroNorm_A)*sp.imag(GFzeroAnom_A)
+	RI2 = sp.real(GFzeroAnom_A)*sp.imag(GFzeroNorm_A)
+	WriteFileX([RI1,RI2],WriteMax,WriteStep,'','crossG.dat')
+
+#print(simps(FD_A*RI1,En_A))
+#print(simps(FD_A*RI2,En_A))
+
+GG1  = CorrelatorImGGzero(GFzero_A,GFzero_A,1,1)
+GG2n = CorrelatorImGGzero(GFzeroNorm_A,GFzeroNorm_A,1,1)
+GG2a = CorrelatorImGGzero(GFzeroAnom_A,GFzeroAnom_A,1,1)
+
+#print('{0: .8f} {1: .8f} {2: .8f} {3: .8f}'.format(sp.real(GG1),sp.imag(GG1),sp.real(GG2n+GG2a),sp.imag(GG2n+GG2a)))
 
 ###########################################################
 ## second order PT solution ###############################
@@ -158,13 +175,15 @@ n2nd = brentq(eqn,0.0,1.0)
 
 GF2nd_A = GFlambda(En_A-U*(n2nd-0.5)-Sigma2nd_A)
 n2nd = Filling(GF2nd_A)
-if chat: print('# - norm[G2nd]     = {0: .8f}, n = {1: .8f}'.format(IntDOS(GF2nd_A),n2nd))
+if chat: print('# - norm[G2nd]     = {0: .8f}, nW = {1: .8f}'.format(IntDOS(GF2nd_A),n2nd))
 
 ## symmetrized Green function
 GF2ndNorm_A = 0.5*(GF2nd_A-sp.flipud(sp.conj(GF2nd_A)))
 GF2ndAnom_A = 0.5*(GF2nd_A+sp.flipud(sp.conj(GF2nd_A)))
-n2nd2 = Filling(GF2ndNorm_A)
-if chat: print('# - norm[G2ndSymm] = {0: .8f}, n = {1: .8f}'.format(IntDOS(GF2ndNorm_A),n2nd2))
+n2nd2  = Filling(GF2ndNorm_A)
+nu2nd2 = Filling(GF2ndAnom_A)
+if chat: print('# - norm[G2ndNorm] = {0: .8f}, n  = {1: .8f}'.format(IntDOS(GF2ndNorm_A),n2nd2))
+if chat: print('# - norm[G2ndAnom] = {0: .8f}, nu = {1: .8f}'.format(IntDOS(GFzeroAnom_A),nuzero2))
 
 JC2nd = JosephsonCurrent(GF2ndAnom_A,En_A)
 if chat: print('# - Josephson current: {0: .8f}'.format(JC2nd))
@@ -178,8 +197,8 @@ if WriteGF:
 	filename = 'gf_2nd_'+parfname+'.dat'
 	WriteFileX([GF2ndNorm_A,GF2ndAnom_A,GF2nd_A],WriteMax,WriteStep,header,filename)
 
-print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
-.format(U,DeltaS,GammaS,GammaN,P,0.0,nHF,n2nd,0.0,JCHF,JC2nd,0.0))
+#print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
+#.format(U,DeltaS,GammaS,GammaN,P,0.0,nHF,n2nd,0.0,JCHF,JC2nd,0.0))
 
 ###########################################################
 ## calculate the Lambda vertex ############################
@@ -236,13 +255,15 @@ nint = brentq(eqn,0.0,1.0)
 
 GFint_A = GFlambda(En_A-U*(nint-0.5)-Sigma_A)
 nint = Filling(GFint_A)
-if chat: print('# - norm[Gint]  = {0: .8f}, n = {1: .8f}'.format(IntDOS(GFint_A),nint))
+if chat: print('# - norm[Gint]      = {0: .8f}, nW = {1: .8f}'.format(IntDOS(GFint_A),nint))
 
 ## symmetrized Green function
 GFintNorm_A = 0.5*(GFint_A-sp.flipud(sp.conj(GFint_A)))
 GFintAnom_A = 0.5*(GFint_A+sp.flipud(sp.conj(GFint_A)))
-nint2 = Filling(GFintNorm_A)
-if chat: print('# - norm[Gsymm] = {0: .8f}, n = {1: .8f}'.format(IntDOS(GFintNorm_A),nint2))
+nint2  = Filling(GFintNorm_A)
+nuint2 = Filling(GFintAnom_A)
+if chat: print('# - norm[GintNorm] = {0: .8f}, n  = {1: .8f}'.format(IntDOS(GFintNorm_A),nint2))
+if chat: print('# - norm[GintAnom] = {0: .8f}, nu = {1: .8f}'.format(IntDOS(GFintAnom_A),nuint2))
 
 JCint = JosephsonCurrent(GFintAnom_A,En_A)
 if chat: print('# - Josephson current: {0: .8f}'.format(JCint))
@@ -258,7 +279,7 @@ if WriteGF:
 
 ## write data to standard output
 print('{0: .4f}\t{1: .4f}\t{2: .4f}\t{3: .4f}\t{4: .6f}\t{5: .6f}\t{6: .6f}\t{7: .6f}\t{8: .6f}\t{9: .6f}\t{10: .6f}\t{11: .6f}'\
-.format(U,DeltaS,GammaS,GammaN,P,Lambda,nHF,n2nd,nint,JCHF,JC2nd,JCint))
+.format(U,DeltaS,GammaS,GammaN,P,Lambda,nuHF2,nu2nd2,nuint2,JCHF,JC2nd,JCint))
 
 if chat: print('# '+argv[0]+' DONE after {0: .2f} seconds.'.format(float(time()-t)))
 

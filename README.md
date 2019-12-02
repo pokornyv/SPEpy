@@ -4,8 +4,7 @@ SPEpy
 
 SPEpy (**S**implified **P**arquet **E**quations in **py**thon), is a python3 code to solve 
 the one-band single-impurity Anderson model (SIAM) or the one-band Hubbard model within the 
-_simplified parquet equation scheme_ (SPE) as described in Refs. [1-3], following the basic 
-ideas of Refs. [5,6].
+_simplified parquet equation scheme_ (SPE) as described in Refs. [1-3].
 This version is capable of solving SIAM with Lorentzian, Gaussian and semi-elliptic
 non-interacting density of states (DoS) and other model functions can be easily added.  
 
@@ -14,12 +13,13 @@ The DMFT loop is implemented only for the Bethe lattice with semi-elliptic DoS a
 solutions only. This code is more a proof of concept than a real DMFT solver, and should be used 
 as that.  
 
-It can also solve the three-terminal setup with two superconducting and one metallic lead at half-filling.  
+It can also solve the three-terminal setup with two superconducting and one metallic lead at half-filling
+for both finite and infinite superconducting gap.  
 
 This code is still subject to heavy development and big changes. 
 It requires deep knowledge of the method to obtain reasonable results. 
-Codes also still contain non-documented internal switches. 
-Use only as an example how to implement SPE. Code *super_parquet.py* is yet in early stage 
+Codes also still contain non-documented switches like *SC* and *FSC* that change the level of
+self-consistency. Use only as an example how to implement SPE. Code *super_parquet.py* is yet in early stage 
 of development.  
 
 Code is now tested on python 3.7 with [SciPy](https://www.scipy.org) 1.1. 
@@ -86,6 +86,11 @@ the spin channel. For non-magnetic setup only the *Up* file is generated. `Write
 in *siam.in* is dummy for this code. In magnetic setup, file *gfMag_xxxx.dat* is also generated. 
 It contains the Green functions and self-energies for both spin channels, useful for plotting 
 the total spectral function.
+
+*super_parquet.py* generates three files: *gf_HF_xxxx.dat*, *gf_2nd_xxxx.dat* and *gf_int_xxxx.dat* that contain the
+Green functions from Hartree-Fock, 2nd order PT and Parquet approximation, the normal part (solumns 2,3),
+anomalous part (cols 4,5) and the Green function in rotated basis (cols 6,7). Note that this code works
+only at half-filling.
 
 *dmft_parquet.py* generates output file *gf_iterxxxx.dat* with Green function and self-energy 
 for every iteration (see `WriteFiles` switch in *dmft.in*) and a final file *gf_Uxxxx_dmft.dat* 

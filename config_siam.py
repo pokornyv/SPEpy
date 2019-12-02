@@ -32,6 +32,8 @@ alpha            = 0.5
 SCsolver         = 'fixed'
 GFtype           = 'lor'
 GFmethod         = 'H'
+SC               = False
+FSC              = False
 calcSusc         = True
 chat             = True
 WriteGF          = True
@@ -63,6 +65,10 @@ if config.has_option('params','calcSusc'):
 	calcSusc = bool(int(config.get('params','calcSusc')))
 if config.has_option('params','GFmethod'):
 	GFmethod = str(config.get('params','GFmethod'))
+if config.has_option('params','SC'):
+	SC   = bool(int(config.get('params','SC')))
+if config.has_option('params','FSC'):
+	FSC   = bool(int(config.get('params','FSC')))
 
 ## I/O parameters
 
